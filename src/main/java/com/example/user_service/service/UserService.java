@@ -6,6 +6,7 @@ import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
 import com.example.user_service.repository.UserRepository;
+import com.example.user_service.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,5 +44,16 @@ public class UserService {
         log.info("사용자 ID: {} 로 사용자 생성 성공.", savedUser.getId());
 
         return new UserCreateResponse(savedUser.getId(), savedUser.getEmail(), savedUser.getName());
+    }
+
+    @Transactional
+    public void deleteUser(Long id) {
+        log.info("ID: {} 로 사용자 삭제를 시도합니다.", id);
+        if (!userRepository.existsById(id)) {
+            log.warn("사용자 삭제 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", id);
+            throw new UserNotFoundException("User not found with ID: " + id);
+        }
+        userRepository.deleteById(id);
+        log.info("사용자 ID: {} 삭제 성공.", id);
     }
 }

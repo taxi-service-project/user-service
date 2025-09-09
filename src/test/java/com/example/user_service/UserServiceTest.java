@@ -5,6 +5,7 @@ import com.example.user_service.dto.UserCreateResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
+import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,5 +99,36 @@ class UserServiceTest {
         verify(userRepository, times(1)).existsByEmail(userCreateRequest.email());
         verify(userRepository, times(1)).existsByPhoneNumber(userCreateRequest.phoneNumber());
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("유효한 ID로 사용자를 삭제하면 성공한다")
+    void deleteUser_withValidId_shouldSucceed() {
+        // Given
+        Long userId = 1L;
+        when(userRepository.existsById(userId)).thenReturn(true);
+        doNothing().when(userRepository).deleteById(userId);
+
+        // When
+        userService.deleteUser(userId);
+
+        // Then
+        verify(userRepository, times(1)).existsById(userId);
+        verify(userRepository, times(1)).deleteById(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 ID로 사용자를 삭제하면 UserNotFoundException이 발생한다")
+    void deleteUser_withNonExistentId_shouldThrowUserNotFoundException() {
+        // Given
+        Long userId = 1L;
+        when(userRepository.existsById(userId)).thenReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> userService.deleteUser(userId))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("User not found with ID: " + userId);
+        verify(userRepository, times(1)).existsById(userId);
+        verify(userRepository, never()).deleteById(anyLong());
     }
 }
