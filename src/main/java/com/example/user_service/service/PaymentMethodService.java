@@ -6,6 +6,7 @@ import com.example.user_service.dto.PaymentMethodResponse;
 import com.example.user_service.entity.PaymentMethod;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.UserNotFoundException;
+import com.example.user_service.exception.PaymentMethodNotFoundException;
 import com.example.user_service.repository.PaymentMethodRepository;
 import com.example.user_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -81,6 +82,25 @@ public class PaymentMethodService {
                         .isDefault(pm.isDefault())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deletePaymentMethod(Long userId, Long methodId) {
+        log.info("사용자 ID: {} 의 결제 수단 ID: {} 삭제를 시도합니다.", userId, methodId);
+
+        PaymentMethod paymentMethod = paymentMethodRepository.findById(methodId)
+                .orElseThrow(() -> {
+                    log.warn("결제 수단 삭제 실패: ID {} 에 해당하는 결제 수단을 찾을 수 없습니다.", methodId);
+                    return new PaymentMethodNotFoundException("Payment method not found with ID: " + methodId);
+                });
+
+        if (!paymentMethod.getUser().getId().equals(userId)) {
+            log.warn("결제 수단 삭제 실패: 사용자 ID {} 가 결제 수단 ID {} 의 소유자가 아닙니다.", userId, methodId);
+            throw new PaymentMethodNotFoundException("Payment method not found for user ID: " + userId + " and method ID: " + methodId);
+        }
+
+        paymentMethodRepository.delete(paymentMethod);
+        log.info("사용자 ID: {} 의 결제 수단 ID: {} 삭제 성공.", userId, methodId);
     }
 
     private String inferCardIssuer(String cardNumber) {

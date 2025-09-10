@@ -22,8 +22,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import com.example.user_service.exception.PaymentMethodNotFoundException;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -101,5 +105,35 @@ class PaymentMethodControllerTest {
                 .andExpect(jsonPath("$[1].isDefault").value(false));
 
         verify(paymentMethodService, times(1)).getPaymentMethods(eq(userId));
+    }
+
+    @Test
+    @DisplayName("유효한 사용자 ID와 결제 수단 ID로 결제 수단 삭제 요청을 보내면 204 No Content 응답을 받는다")
+    void deletePaymentMethod_withValidIds_returns204NoContent() throws Exception {
+        // Given
+        Long userId = 1L;
+        Long methodId = 1L;
+        doNothing().when(paymentMethodService).deletePaymentMethod(userId, methodId);
+
+        // When & Then
+        mockMvc.perform(delete("/api/users/{userId}/payment-methods/{methodId}", userId, methodId))
+                .andExpect(status().isNoContent());
+
+        verify(paymentMethodService, times(1)).deletePaymentMethod(eq(userId), eq(methodId));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 결제 수단 ID로 삭제 요청을 보내면 404 Not Found 응답을 받는다")
+    void deletePaymentMethod_withNonExistentMethodId_returns404NotFound() throws Exception {
+        // Given
+        Long userId = 1L;
+        Long methodId = 999L;
+        doThrow(new PaymentMethodNotFoundException("Payment method not found")).when(paymentMethodService).deletePaymentMethod(userId, methodId);
+
+        // When & Then
+        mockMvc.perform(delete("/api/users/{userId}/payment-methods/{methodId}", userId, methodId))
+                .andExpect(status().isNotFound());
+
+        verify(paymentMethodService, times(1)).deletePaymentMethod(eq(userId), eq(methodId));
     }
 }

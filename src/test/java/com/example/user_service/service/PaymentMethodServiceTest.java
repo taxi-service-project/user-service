@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.List;
 import java.util.Arrays;
 import com.example.user_service.dto.PaymentMethodResponse;
+import com.example.user_service.exception.PaymentMethodNotFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -164,5 +165,63 @@ class PaymentMethodServiceTest {
                 .hasMessageContaining("User not found with ID: 999");
 
         verify(paymentMethodRepository, never()).findByUserId(anyLong());
+    }
+
+    @Test
+    @DisplayName("유효한 사용자 ID와 결제 수단 ID로 결제 수단 삭제 시 성공한다")
+    void deletePaymentMethod_withValidIds_success() {
+        // Given
+        Long userId = 1L;
+        Long methodId = 1L;
+        PaymentMethod paymentMethod = PaymentMethod.builder().user(testUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
+        ReflectionTestUtils.setField(paymentMethod, "id", methodId);
+
+        when(paymentMethodRepository.findById(methodId)).thenReturn(Optional.of(paymentMethod));
+        doNothing().when(paymentMethodRepository).delete(paymentMethod);
+
+        // When
+        paymentMethodService.deletePaymentMethod(userId, methodId);
+
+        // Then
+        verify(paymentMethodRepository, times(1)).findById(methodId);
+        verify(paymentMethodRepository, times(1)).delete(paymentMethod);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 결제 수단 ID로 삭제 시 PaymentMethodNotFoundException이 발생한다")
+    void deletePaymentMethod_withNonExistentMethodId_throwsPaymentMethodNotFoundException() {
+        // Given
+        Long userId = 1L;
+        Long methodId = 999L;
+
+        when(paymentMethodRepository.findById(methodId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> paymentMethodService.deletePaymentMethod(userId, methodId))
+                .isInstanceOf(PaymentMethodNotFoundException.class)
+                .hasMessageContaining("Payment method not found with ID: 999");
+
+        verify(paymentMethodRepository, never()).delete(any(PaymentMethod.class));
+    }
+
+    @Test
+    @DisplayName("사용자 ID와 결제 수단 ID가 일치하지 않을 때 삭제 시 PaymentMethodNotFoundException이 발생한다")
+    void deletePaymentMethod_withMismatchedUserId_throwsPaymentMethodNotFoundException() {
+        // Given
+        Long userId = 1L;
+        Long methodId = 1L;
+        User anotherUser = User.builder().email("another@example.com").password("pass").name("Another").phoneNumber("010").build();
+        ReflectionTestUtils.setField(anotherUser, "id", 2L);
+        PaymentMethod paymentMethod = PaymentMethod.builder().user(anotherUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
+        ReflectionTestUtils.setField(paymentMethod, "id", methodId);
+
+        when(paymentMethodRepository.findById(methodId)).thenReturn(Optional.of(paymentMethod));
+
+        // When & Then
+        assertThatThrownBy(() -> paymentMethodService.deletePaymentMethod(userId, methodId))
+                .isInstanceOf(PaymentMethodNotFoundException.class)
+                .hasMessageContaining("Payment method not found for user ID: 1 and method ID: 1");
+
+        verify(paymentMethodRepository, never()).delete(any(PaymentMethod.class));
     }
 }
