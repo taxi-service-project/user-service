@@ -4,6 +4,7 @@ import com.example.user_service.dto.UserCreateRequest;
 import com.example.user_service.dto.UserCreateResponse;
 import com.example.user_service.dto.UserUpdateRequest;
 import com.example.user_service.dto.UserProfileResponse;
+import com.example.user_service.dto.UserPasswordChangeRequest;
 import com.example.user_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,12 @@ public class UserController {
     public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable Long id) {
         UserProfileResponse response = userService.getUserProfile(id);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/password")
+    public ResponseEntity<Void> changePassword(@PathVariable Long id, @Valid @RequestBody UserPasswordChangeRequest request) {
+        userService.changePassword(id, request);
+        return ResponseEntity.ok().build();
     }
 
 }

@@ -10,6 +10,8 @@ import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.exception.UserNotFoundException;
+import com.example.user_service.dto.UserPasswordChangeRequest;
+import com.example.user_service.exception.InvalidPasswordException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -89,5 +91,24 @@ public class UserService {
                     log.warn("사용자 프로필 조회 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", id);
                     return new UserNotFoundException("User not found with ID: " + id);
                 });
+    }
+
+    @Transactional
+    public void changePassword(Long id, UserPasswordChangeRequest request) {
+        log.info("ID: {} 로 사용자 비밀번호 변경을 시도합니다.", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.warn("비밀번호 변경 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", id);
+                    return new UserNotFoundException("User not found with ID: " + id);
+                });
+
+        if (!user.getPassword().equals(request.oldPassword())) {
+            log.warn("비밀번호 변경 실패: ID {} 의 현재 비밀번호가 일치하지 않습니다.", id);
+            throw new InvalidPasswordException("Current password does not match.");
+        }
+
+        user.setPassword(request.newPassword());
+        userRepository.save(user);
+        log.info("사용자 ID: {} 비밀번호 변경 성공.", id);
     }
 }

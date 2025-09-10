@@ -6,6 +6,7 @@ import com.example.user_service.dto.UserCreateResponse;
 import com.example.user_service.dto.UserUpdateRequest;
 import com.example.user_service.dto.UserUpdateResponse;
 import com.example.user_service.dto.UserProfileResponse;
+import com.example.user_service.dto.UserPasswordChangeRequest;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -175,5 +176,23 @@ class UserControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(userService, times(1)).getUserProfile(userId);
+    }
+
+    @Test
+    @DisplayName("유효한 비밀번호 변경 요청을 보내면 200 OK 응답을 받는다")
+    void changePassword_withValidRequest_returns200Ok() throws Exception {
+        // Given
+        Long userId = 1L;
+        UserPasswordChangeRequest request = new UserPasswordChangeRequest("oldPassword", "newPassword");
+
+        doNothing().when(userService).changePassword(eq(userId), any(UserPasswordChangeRequest.class));
+
+        // When & Then
+        mockMvc.perform(put("/api/users/{id}/password", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        verify(userService, times(1)).changePassword(eq(userId), any(UserPasswordChangeRequest.class));
     }
 }

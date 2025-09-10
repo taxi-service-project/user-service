@@ -4,6 +4,7 @@ import com.example.user_service.dto.*;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
+import com.example.user_service.exception.InvalidPasswordException;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.service.UserService;
@@ -227,5 +228,79 @@ class UserServiceTest {
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessageContaining("User not found with ID: " + userId);
         verify(userRepository, times(1)).findById(userId);
+    }
+
+    @Test
+    @DisplayName("유효한 정보로 사용자 비밀번호를 변경하면 성공한다")
+    void changePassword_withValidInfo_shouldSucceed() {
+        // Given
+        Long userId = 1L;
+        String oldPassword = "old_password";
+        String newPassword = "new_password";
+        UserPasswordChangeRequest request = new UserPasswordChangeRequest(oldPassword, newPassword);
+
+        User existingUser = User.builder()
+                .email("test@example.com")
+                .password(oldPassword) // Stored in plain text as per user instruction
+                .name("Test User")
+                .phoneNumber("010-1234-5678")
+                .build();
+        ReflectionTestUtils.setField(existingUser, "id", userId);
+
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(existingUser); // Return the same user after update
+
+        // When
+        userService.changePassword(userId, request);
+
+        // Then
+        assertThat(existingUser.getPassword()).isEqualTo(newPassword); // Verify password is changed
+        verify(userRepository, times(1)).findById(userId);
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 ID로 사용자 비밀번호를 변경하면 UserNotFoundException이 발생한다")
+    void changePassword_withNonExistentId_shouldThrowUserNotFoundException() {
+        // Given
+        Long userId = 1L;
+        UserPasswordChangeRequest request = new UserPasswordChangeRequest("old_password", "new_password");
+
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.changePassword(userId, request))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("User not found with ID: " + userId);
+        verify(userRepository, times(1)).findById(userId);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("현재 비밀번호가 일치하지 않으면 InvalidPasswordException이 발생한다")
+    void changePassword_withIncorrectOldPassword_shouldThrowInvalidPasswordException() {
+        // Given
+        Long userId = 1L;
+        String oldPassword = "old_password";
+        String wrongPassword = "wrong_password";
+        String newPassword = "new_password";
+        UserPasswordChangeRequest request = new UserPasswordChangeRequest(wrongPassword, newPassword);
+
+        User existingUser = User.builder()
+                .email("test@example.com")
+                .password(oldPassword)
+                .name("Test User")
+                .phoneNumber("010-1234-5678")
+                .build();
+        ReflectionTestUtils.setField(existingUser, "id", userId);
+
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(existingUser));
+
+        // When & Then
+        assertThatThrownBy(() -> userService.changePassword(userId, request))
+                .isInstanceOf(InvalidPasswordException.class)
+                .hasMessageContaining("Current password does not match.");
+        verify(userRepository, times(1)).findById(userId);
+        verify(userRepository, never()).save(any(User.class));
     }
 }

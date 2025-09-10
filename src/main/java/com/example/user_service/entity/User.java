@@ -40,4 +40,8 @@ public class User {
         this.name = name;
         this.phoneNumber = phoneNumber;
     }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }
