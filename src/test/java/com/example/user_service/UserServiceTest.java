@@ -2,6 +2,8 @@ package com.example.user_service;
 
 import com.example.user_service.dto.UserCreateRequest;
 import com.example.user_service.dto.UserCreateResponse;
+import com.example.user_service.dto.UserUpdateRequest;
+import com.example.user_service.dto.UserUpdateResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
@@ -20,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -130,5 +133,59 @@ class UserServiceTest {
                 .hasMessageContaining("User not found with ID: " + userId);
         verify(userRepository, times(1)).existsById(userId);
         verify(userRepository, never()).deleteById(anyLong());
+    }
+
+    @Test
+    @DisplayName("유효한 정보로 사용자를 업데이트하면 성공한다")
+    void updateUser_withValidInfo_shouldSucceed() {
+        // Given
+        Long userId = 1L;
+        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "010-9876-5432");
+        User existingUser = User.builder()
+                .email("test@example.com")
+                .password("old_password")
+                .name("Old Name")
+                .phoneNumber("010-1234-5678")
+                .build();
+        ReflectionTestUtils.setField(existingUser, "id", userId);
+
+        User updatedUser = User.builder()
+                .email("test@example.com")
+                .password("old_password") // Password should not change
+                .name(request.name())
+                .phoneNumber(request.phoneNumber())
+                .build();
+        ReflectionTestUtils.setField(updatedUser, "id", userId);
+
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+
+        // When
+        UserUpdateResponse response = userService.updateUser(userId, request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(userId);
+        assertThat(response.name()).isEqualTo(request.name());
+        assertThat(response.phoneNumber()).isEqualTo(request.phoneNumber());
+        verify(userRepository, times(1)).findById(userId);
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 ID로 사용자를 업데이트하면 UserNotFoundException이 발생한다")
+    void updateUser_withNonExistentId_shouldThrowUserNotFoundException() {
+        // Given
+        Long userId = 1L;
+        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "010-9876-5432");
+
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.updateUser(userId, request))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("User not found with ID: " + userId);
+        verify(userRepository, times(1)).findById(userId);
+        verify(userRepository, never()).save(any(User.class));
     }
 }

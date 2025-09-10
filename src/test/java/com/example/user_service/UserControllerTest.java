@@ -3,6 +3,8 @@ package com.example.user_service;
 import com.example.user_service.controller.UserController;
 import com.example.user_service.dto.UserCreateRequest;
 import com.example.user_service.dto.UserCreateResponse;
+import com.example.user_service.dto.UserUpdateRequest;
+import com.example.user_service.dto.UserUpdateResponse;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,9 +17,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -83,5 +87,57 @@ class UserControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(userService, times(1)).deleteUser(userId);
+    }
+
+    @Test
+    @DisplayName("유효한 사용자 정보로 사용자 업데이트 요청을 보내면 200 OK 응답을 받는다")
+    void updateUser_withValidUserInfo_returns200Ok() throws Exception {
+        // Given
+        Long userId = 1L;
+        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "010-9876-5432");
+
+        when(userService.updateUser(eq(userId), any(UserUpdateRequest.class))).thenReturn(new UserUpdateResponse(userId, request.name(), "test@example.com", request.phoneNumber()));
+
+        // When & Then
+        mockMvc.perform(put("/api/users/{id}", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        verify(userService, times(1)).updateUser(eq(userId), any(UserUpdateRequest.class));
+    }
+
+    @Test
+    @DisplayName("유효하지 않은 이름으로 사용자 업데이트 요청을 보내면 400 Bad Request 응답을 받는다")
+    void updateUser_withInvalidName_returns400BadRequest() throws Exception {
+        // Given
+        Long userId = 1L;
+        UserUpdateRequest request = new UserUpdateRequest("", "010-9876-5432");
+
+        // When & Then
+        mockMvc.perform(put("/api/users/{id}", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(userService, never()).updateUser(anyLong(), any(UserUpdateRequest.class));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 ID로 사용자 업데이트 요청을 보내면 404 Not Found 응답을 받는다")
+    void updateUser_withNonExistentId_returns404NotFound() throws Exception {
+        // Given
+        Long userId = 1L;
+        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "010-9876-5432");
+
+        doThrow(new UserNotFoundException("User not found")).when(userService).updateUser(eq(userId), any(UserUpdateRequest.class));
+
+        // When & Then
+        mockMvc.perform(put("/api/users/{id}", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+
+        verify(userService, times(1)).updateUser(eq(userId), any(UserUpdateRequest.class));
     }
 }

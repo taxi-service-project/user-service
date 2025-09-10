@@ -2,6 +2,8 @@ package com.example.user_service.service;
 
 import com.example.user_service.dto.UserCreateRequest;
 import com.example.user_service.dto.UserCreateResponse;
+import com.example.user_service.dto.UserUpdateRequest;
+import com.example.user_service.dto.UserUpdateResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
@@ -55,5 +57,21 @@ public class UserService {
         }
         userRepository.deleteById(id);
         log.info("사용자 ID: {} 삭제 성공.", id);
+    }
+
+    public UserUpdateResponse updateUser(Long id, UserUpdateRequest request) {
+        return userRepository.findById(id)
+                             .map(user -> {
+                                 user.update(request.name(), request.phoneNumber());
+                                 User updatedUser = userRepository.save(user);
+                                 log.info("사용자 ID: {} 수정 성공.", id);
+                                 return new UserUpdateResponse(updatedUser.getId(), updatedUser.getName(),
+                                         updatedUser.getEmail(), updatedUser.getPhoneNumber());
+                             })
+                             .orElseThrow(() -> {
+                                 log.warn("사용자 수정 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.",
+                                         id);
+                                 return new UserNotFoundException("User not found with ID: " + id);
+                             });
     }
 }
