@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.util.List;
@@ -47,14 +48,7 @@ class PaymentMethodServiceTest {
                 .name("Test User")
                 .phoneNumber("01012345678")
                 .build();
-        // Assuming ID is set after saving, for tests we can set it directly
-        try {
-            java.lang.reflect.Field field = testUser.getClass().getDeclaredField("id");
-            field.setAccessible(true);
-            field.set(testUser, 1L);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
-        }
+        ReflectionTestUtils.setField(testUser, "id", 1L);
     }
 
     @Test
@@ -71,13 +65,7 @@ class PaymentMethodServiceTest {
         when(paymentMethodRepository.existsByUserId(1L)).thenReturn(false);
         when(paymentMethodRepository.save(any(PaymentMethod.class))).thenAnswer(invocation -> {
             PaymentMethod pm = invocation.getArgument(0);
-            try {
-                java.lang.reflect.Field field = pm.getClass().getDeclaredField("id");
-                field.setAccessible(true);
-                field.set(pm, 1L);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                e.printStackTrace();
-            }
+            ReflectionTestUtils.setField(pm, "id", 1L);
             return pm;
         });
 
@@ -106,13 +94,7 @@ class PaymentMethodServiceTest {
         when(paymentMethodRepository.existsByUserId(1L)).thenReturn(true);
         when(paymentMethodRepository.save(any(PaymentMethod.class))).thenAnswer(invocation -> {
             PaymentMethod pm = invocation.getArgument(0);
-            try {
-                java.lang.reflect.Field field = pm.getClass().getDeclaredField("id");
-                field.setAccessible(true);
-                field.set(pm, 2L);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                e.printStackTrace();
-            }
+            ReflectionTestUtils.setField(pm, "id", 2L);
             return pm;
         });
 
