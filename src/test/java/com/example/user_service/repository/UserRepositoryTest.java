@@ -1,4 +1,4 @@
-package com.example.user_service;
+package com.example.user_service.repository;
 
 import com.example.user_service.entity.User;
 import com.example.user_service.repository.UserRepository;

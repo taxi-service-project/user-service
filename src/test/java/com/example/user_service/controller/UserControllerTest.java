@@ -1,12 +1,6 @@
-package com.example.user_service;
+package com.example.user_service.controller;
 
-import com.example.user_service.controller.UserController;
-import com.example.user_service.dto.UserCreateRequest;
-import com.example.user_service.dto.UserCreateResponse;
-import com.example.user_service.dto.UserUpdateRequest;
-import com.example.user_service.dto.UserUpdateResponse;
-import com.example.user_service.dto.UserProfileResponse;
-import com.example.user_service.dto.UserPasswordChangeRequest;
+import com.example.user_service.dto.*;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -195,4 +189,5 @@ class UserControllerTest {
 
         verify(userService, times(1)).changePassword(eq(userId), any(UserPasswordChangeRequest.class));
     }
+
 }

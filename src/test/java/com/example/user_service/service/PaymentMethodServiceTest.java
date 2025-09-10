@@ -1,0 +1,147 @@
+package com.example.user_service.service;
+
+import com.example.user_service.dto.PaymentMethodRegisterRequest;
+import com.example.user_service.dto.PaymentMethodRegisterResponse;
+import com.example.user_service.entity.PaymentMethod;
+import com.example.user_service.entity.User;
+import com.example.user_service.exception.UserNotFoundException;
+import com.example.user_service.repository.PaymentMethodRepository;
+import com.example.user_service.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Collections;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class PaymentMethodServiceTest {
+
+    @Mock
+    private PaymentMethodRepository paymentMethodRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private PaymentMethodService paymentMethodService;
+
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        testUser = User.builder()
+                .email("test@example.com")
+                .password("password123")
+                .name("Test User")
+                .phoneNumber("01012345678")
+                .build();
+        // Assuming ID is set after saving, for tests we can set it directly
+        try {
+            java.lang.reflect.Field field = testUser.getClass().getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(testUser, 1L);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    @DisplayName("새로운 결제 수단 등록 시, 첫 결제 수단이면 기본 결제 수단으로 설정된다")
+    void registerPaymentMethod_firstPaymentMethod_setsAsDefault() {
+        // Given
+        PaymentMethodRegisterRequest request = PaymentMethodRegisterRequest.builder()
+                .cardNumber("4111-1111-1111-1111")
+                .expiryDate("12/25")
+                .cvc("123")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(paymentMethodRepository.existsByUserId(1L)).thenReturn(false);
+        when(paymentMethodRepository.save(any(PaymentMethod.class))).thenAnswer(invocation -> {
+            PaymentMethod pm = invocation.getArgument(0);
+            try {
+                java.lang.reflect.Field field = pm.getClass().getDeclaredField("id");
+                field.setAccessible(true);
+                field.set(pm, 1L);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                e.printStackTrace();
+            }
+            return pm;
+        });
+
+        // When
+        PaymentMethodRegisterResponse response = paymentMethodService.registerPaymentMethod(1L, request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.isDefault()).isTrue();
+        assertThat(response.cardIssuer()).isEqualTo("Visa");
+        assertThat(response.cardNumberMasked()).isEqualTo("4111-XXXX-XXXX-1111");
+        verify(paymentMethodRepository, times(1)).save(any(PaymentMethod.class));
+    }
+
+    @Test
+    @DisplayName("기존 결제 수단이 있는 경우, 새로운 결제 수단은 기본 결제 수단으로 설정되지 않는다")
+    void registerPaymentMethod_existingPaymentMethods_doesNotSetAsDefault() {
+        // Given
+        PaymentMethodRegisterRequest request = PaymentMethodRegisterRequest.builder()
+                .cardNumber("5111-1111-1111-1111")
+                .expiryDate("12/25")
+                .cvc("123")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(paymentMethodRepository.existsByUserId(1L)).thenReturn(true);
+        when(paymentMethodRepository.save(any(PaymentMethod.class))).thenAnswer(invocation -> {
+            PaymentMethod pm = invocation.getArgument(0);
+            try {
+                java.lang.reflect.Field field = pm.getClass().getDeclaredField("id");
+                field.setAccessible(true);
+                field.set(pm, 2L);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                e.printStackTrace();
+            }
+            return pm;
+        });
+
+        // When
+        PaymentMethodRegisterResponse response = paymentMethodService.registerPaymentMethod(1L, request);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.isDefault()).isFalse();
+        assertThat(response.cardIssuer()).isEqualTo("MasterCard");
+        assertThat(response.cardNumberMasked()).isEqualTo("5111-XXXX-XXXX-1111");
+        verify(paymentMethodRepository, times(1)).save(any(PaymentMethod.class));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자 ID로 결제 수단 등록 시 UserNotFoundException이 발생한다")
+    void registerPaymentMethod_userNotFound_throwsUserNotFoundException() {
+        // Given
+        PaymentMethodRegisterRequest request = PaymentMethodRegisterRequest.builder()
+                .cardNumber("4111-1111-1111-1111")
+                .expiryDate("12/25")
+                .cvc("123")
+                .build();
+
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> paymentMethodService.registerPaymentMethod(999L, request))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("User not found with ID: 999");
+
+        verify(paymentMethodRepository, never()).save(any(PaymentMethod.class));
+    }
+}
