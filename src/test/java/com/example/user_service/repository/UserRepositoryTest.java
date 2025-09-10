@@ -1,7 +1,6 @@
 package com.example.user_service.repository;
 
 import com.example.user_service.entity.User;
-import com.example.user_service.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +41,6 @@ class UserRepositoryTest {
     @DisplayName("이메일로 사용자가 존재하지 않는지 확인하면 false를 반환한다")
     void existsByEmail_whenUserDoesNotExist_returnsFalse() {
         // Given
-        // No user persisted
 
         // When
         boolean exists = userRepository.existsByEmail("nonexistent@example.com");
@@ -74,7 +72,6 @@ class UserRepositoryTest {
     @DisplayName("전화번호로 사용자가 존재하지 않는지 확인하면 false를 반환한다")
     void existsByPhoneNumber_whenUserDoesNotExist_returnsFalse() {
         // Given
-        // No user persisted
 
         // When
         boolean exists = userRepository.existsByPhoneNumber("01099998888");
