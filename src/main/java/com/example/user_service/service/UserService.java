@@ -4,6 +4,7 @@ import com.example.user_service.dto.UserCreateRequest;
 import com.example.user_service.dto.UserCreateResponse;
 import com.example.user_service.dto.UserUpdateRequest;
 import com.example.user_service.dto.UserUpdateResponse;
+import com.example.user_service.dto.UserProfileResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
@@ -59,6 +60,7 @@ public class UserService {
         log.info("사용자 ID: {} 삭제 성공.", id);
     }
 
+    @Transactional
     public UserUpdateResponse updateUser(Long id, UserUpdateRequest request) {
         return userRepository.findById(id)
                              .map(user -> {
@@ -73,5 +75,19 @@ public class UserService {
                                          id);
                                  return new UserNotFoundException("User not found with ID: " + id);
                              });
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse getUserProfile(Long id) {
+        log.info("ID: {} 로 사용자 프로필 조회를 시도합니다.", id);
+        return userRepository.findById(id)
+                .map(user -> {
+                    log.info("사용자 ID: {} 프로필 조회 성공.", id);
+                    return new UserProfileResponse(user.getId(), user.getEmail(), user.getName(), user.getPhoneNumber());
+                })
+                .orElseThrow(() -> {
+                    log.warn("사용자 프로필 조회 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", id);
+                    return new UserNotFoundException("User not found with ID: " + id);
+                });
     }
 }

@@ -3,12 +3,14 @@ package com.example.user_service.controller;
 import com.example.user_service.dto.UserCreateRequest;
 import com.example.user_service.dto.UserCreateResponse;
 import com.example.user_service.dto.UserUpdateRequest;
+import com.example.user_service.dto.UserProfileResponse;
 import com.example.user_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -39,6 +41,12 @@ public class UserController {
     public ResponseEntity<Void> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest userUpdateRequest) {
         userService.updateUser(id, userUpdateRequest);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable Long id) {
+        UserProfileResponse response = userService.getUserProfile(id);
+        return ResponseEntity.ok(response);
     }
 
 }

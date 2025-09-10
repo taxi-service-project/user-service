@@ -1,15 +1,14 @@
 package com.example.user_service;
 
-import com.example.user_service.dto.UserCreateRequest;
-import com.example.user_service.dto.UserCreateResponse;
-import com.example.user_service.dto.UserUpdateRequest;
-import com.example.user_service.dto.UserUpdateResponse;
+import com.example.user_service.dto.*;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.service.UserService;
+import com.example.user_service.dto.UserUpdateResponse;
+import com.example.user_service.dto.UserProfileResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -187,5 +186,46 @@ class UserServiceTest {
                 .hasMessageContaining("User not found with ID: " + userId);
         verify(userRepository, times(1)).findById(userId);
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("유효한 ID로 사용자 프로필을 조회하면 성공한다")
+    void getUserProfile_withValidId_shouldReturnUserProfileResponse() {
+        // Given
+        Long userId = 1L;
+        User userWithId = User.builder()
+                .email("test@example.com")
+                .password("password123")
+                .name("Test User")
+                .phoneNumber("01012345678")
+                .build();
+        ReflectionTestUtils.setField(userWithId, "id", userId);
+
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(userWithId));
+
+        // When
+        UserProfileResponse response = userService.getUserProfile(userId);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(userId);
+        assertThat(response.email()).isEqualTo(userWithId.getEmail());
+        assertThat(response.name()).isEqualTo(userWithId.getName());
+        assertThat(response.phoneNumber()).isEqualTo(userWithId.getPhoneNumber());
+        verify(userRepository, times(1)).findById(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 ID로 사용자 프로필을 조회하면 UserNotFoundException이 발생한다")
+    void getUserProfile_withNonExistentId_shouldThrowUserNotFoundException() {
+        // Given
+        Long userId = 1L;
+        when(userRepository.findById(userId)).thenReturn(java.util.Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.getUserProfile(userId))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("User not found with ID: " + userId);
+        verify(userRepository, times(1)).findById(userId);
     }
 }

@@ -5,6 +5,7 @@ import com.example.user_service.dto.UserCreateRequest;
 import com.example.user_service.dto.UserCreateResponse;
 import com.example.user_service.dto.UserUpdateRequest;
 import com.example.user_service.dto.UserUpdateResponse;
+import com.example.user_service.dto.UserProfileResponse;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -139,5 +141,39 @@ class UserControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(userService, times(1)).updateUser(eq(userId), any(UserUpdateRequest.class));
+    }
+
+    @Test
+    @DisplayName("유효한 ID로 사용자 프로필 조회 요청을 보내면 200 OK 응답과 사용자 프로필을 받는다")
+    void getUserProfile_withValidId_returns200OkAndUserProfile() throws Exception {
+        // Given
+        Long userId = 1L;
+        UserProfileResponse expectedResponse = new UserProfileResponse(userId, "test@example.com", "Test User", "010-1234-5678");
+
+        when(userService.getUserProfile(userId)).thenReturn(expectedResponse);
+
+        // When & Then
+        mockMvc.perform(get("/api/users/{id}", userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(userId))
+                .andExpect(jsonPath("$.email").value("test@example.com"))
+                .andExpect(jsonPath("$.name").value("Test User"))
+                .andExpect(jsonPath("$.phoneNumber").value("010-1234-5678"));
+
+        verify(userService, times(1)).getUserProfile(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 ID로 사용자 프로필 조회 요청을 보내면 404 Not Found 응답을 받는다")
+    void getUserProfile_withNonExistentId_returns404NotFound() throws Exception {
+        // Given
+        Long userId = 1L;
+        doThrow(new UserNotFoundException("User not found")).when(userService).getUserProfile(userId);
+
+        // When & Then
+        mockMvc.perform(get("/api/users/{id}", userId))
+                .andExpect(status().isNotFound());
+
+        verify(userService, times(1)).getUserProfile(userId);
     }
 }
