@@ -2,6 +2,7 @@ package com.example.user_service.controller;
 
 import com.example.user_service.dto.PaymentMethodRegisterRequest;
 import com.example.user_service.dto.PaymentMethodRegisterResponse;
+import com.example.user_service.dto.PaymentMethodResponse;
 import com.example.user_service.service.PaymentMethodService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
 @RequestMapping("/api/users/{userId}/payment-methods")
@@ -26,5 +29,11 @@ public class PaymentMethodController {
             @Valid @RequestBody PaymentMethodRegisterRequest request) {
         PaymentMethodRegisterResponse response = paymentMethodService.registerPaymentMethod(userId, request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<PaymentMethodResponse>> getPaymentMethods(@PathVariable Long userId) {
+        List<PaymentMethodResponse> paymentMethods = paymentMethodService.getPaymentMethods(userId);
+        return ResponseEntity.ok(paymentMethods);
     }
 }

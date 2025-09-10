@@ -15,8 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
 import java.util.Optional;
+import java.util.List;
+import java.util.Arrays;
+import com.example.user_service.dto.PaymentMethodResponse;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -143,5 +145,42 @@ class PaymentMethodServiceTest {
                 .hasMessageContaining("User not found with ID: 999");
 
         verify(paymentMethodRepository, never()).save(any(PaymentMethod.class));
+    }
+
+    @Test
+    @DisplayName("유효한 사용자 ID로 결제 수단 목록 조회 시 목록을 반환한다")
+    void getPaymentMethods_withValidUserId_returnsListOfPaymentMethods() {
+        // Given
+        Long userId = 1L;
+        PaymentMethod pm1 = PaymentMethod.builder().user(testUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
+        PaymentMethod pm2 = PaymentMethod.builder().user(testUser).billingKey("dummy-2").cardIssuer("MasterCard").cardNumberMasked("5678-XXXX-XXXX-2222").isDefault(false).build();
+        List<PaymentMethod> paymentMethods = Arrays.asList(pm1, pm2);
+
+        when(userRepository.existsById(userId)).thenReturn(true);
+        when(paymentMethodRepository.findByUserId(userId)).thenReturn(paymentMethods);
+
+        // When
+        List<PaymentMethodResponse> result = paymentMethodService.getPaymentMethods(userId);
+
+        // Then
+        assertThat(result).isNotNull().hasSize(2);
+        assertThat(result.get(0).cardIssuer()).isEqualTo("Visa");
+        assertThat(result.get(1).cardIssuer()).isEqualTo("MasterCard");
+        verify(paymentMethodRepository, times(1)).findByUserId(userId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자 ID로 결제 수단 목록 조회 시 UserNotFoundException이 발생한다")
+    void getPaymentMethods_withNonExistentUserId_throwsUserNotFoundException() {
+        // Given
+        Long userId = 999L;
+        when(userRepository.existsById(userId)).thenReturn(false);
+
+        // When & Then
+        assertThatThrownBy(() -> paymentMethodService.getPaymentMethods(userId))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("User not found with ID: 999");
+
+        verify(paymentMethodRepository, never()).findByUserId(anyLong());
     }
 }

@@ -2,6 +2,7 @@ package com.example.user_service.service;
 
 import com.example.user_service.dto.PaymentMethodRegisterRequest;
 import com.example.user_service.dto.PaymentMethodRegisterResponse;
+import com.example.user_service.dto.PaymentMethodResponse;
 import com.example.user_service.entity.PaymentMethod;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.UserNotFoundException;
@@ -12,7 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +62,25 @@ public class PaymentMethodService {
                 .cardNumberMasked(savedPaymentMethod.getCardNumberMasked())
                 .isDefault(savedPaymentMethod.isDefault())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentMethodResponse> getPaymentMethods(Long userId) {
+        log.info("사용자 ID: {} 에 대한 결제 수단 목록 조회를 시도합니다.", userId);
+
+        if (!userRepository.existsById(userId)) {
+            log.warn("결제 수단 목록 조회 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", userId);
+            throw new UserNotFoundException("User not found with ID: " + userId);
+        }
+
+        return paymentMethodRepository.findByUserId(userId).stream()
+                .map(pm -> PaymentMethodResponse.builder()
+                        .id(pm.getId())
+                        .cardIssuer(pm.getCardIssuer())
+                        .cardNumberMasked(pm.getCardNumberMasked())
+                        .isDefault(pm.isDefault())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private String inferCardIssuer(String cardNumber) {
