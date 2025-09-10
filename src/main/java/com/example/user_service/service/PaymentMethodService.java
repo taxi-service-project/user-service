@@ -103,6 +103,39 @@ public class PaymentMethodService {
         log.info("사용자 ID: {} 의 결제 수단 ID: {} 삭제 성공.", userId, methodId);
     }
 
+    @Transactional
+    public void setDefaultPaymentMethod(Long userId, Long methodId) {
+        log.info("사용자 ID: {} 의 결제 수단 ID: {} 를 기본 결제 수단으로 설정을 시도합니다.", userId, methodId);
+
+        List<PaymentMethod> userPaymentMethods = paymentMethodRepository.findByUserId(userId);
+
+        if (userPaymentMethods.isEmpty()) {
+            log.warn("기본 결제 수단 설정 실패: 사용자 ID {} 에 해당하는 결제 수단이 없습니다.", userId);
+            throw new PaymentMethodNotFoundException("No payment methods found for user ID: " + userId);
+        }
+
+        PaymentMethod targetPaymentMethod = null;
+        for (PaymentMethod pm : userPaymentMethods) {
+            if (pm.getId().equals(methodId)) {
+                targetPaymentMethod = pm;
+            }
+            // 모든 결제 수단의 is_default 값을 false로 일괄 업데이트합니다.
+            if (pm.isDefault()) {
+                pm.isDefault(false);
+            }
+        }
+
+        if (targetPaymentMethod == null) {
+            log.warn("기본 결제 수단 설정 실패: 사용자 ID {} 에 해당하는 결제 수단 ID {} 를 찾을 수 없습니다.", userId, methodId);
+            throw new PaymentMethodNotFoundException("Payment method not found for user ID: " + userId + " and method ID: " + methodId);
+        }
+
+        targetPaymentMethod.isDefault(true);
+
+        paymentMethodRepository.saveAll(userPaymentMethods);
+        log.info("사용자 ID: {} 의 결제 수단 ID: {} 가 기본 결제 수단으로 설정되었습니다.", userId, methodId);
+    }
+
     private String inferCardIssuer(String cardNumber) {
         if (cardNumber == null || cardNumber.length() < 4) {
             return "Unknown";

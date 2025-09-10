@@ -28,6 +28,7 @@ import com.example.user_service.exception.PaymentMethodNotFoundException;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -135,5 +136,35 @@ class PaymentMethodControllerTest {
                 .andExpect(status().isNotFound());
 
         verify(paymentMethodService, times(1)).deletePaymentMethod(eq(userId), eq(methodId));
+    }
+
+    @Test
+    @DisplayName("유효한 사용자 ID와 결제 수단 ID로 기본 결제 수단 설정 요청을 보내면 204 No Content 응답을 받는다")
+    void setDefaultPaymentMethod_withValidIds_returns204NoContent() throws Exception {
+        // Given
+        Long userId = 1L;
+        Long methodId = 1L;
+        doNothing().when(paymentMethodService).setDefaultPaymentMethod(userId, methodId);
+
+        // When & Then
+        mockMvc.perform(put("/api/users/{userId}/payment-methods/{methodId}/default", userId, methodId))
+                .andExpect(status().isNoContent());
+
+        verify(paymentMethodService, times(1)).setDefaultPaymentMethod(eq(userId), eq(methodId));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 결제 수단 ID로 기본 결제 수단 설정 요청을 보내면 404 Not Found 응답을 받는다")
+    void setDefaultPaymentMethod_withNonExistentMethodId_returns404NotFound() throws Exception {
+        // Given
+        Long userId = 1L;
+        Long methodId = 999L;
+        doThrow(new PaymentMethodNotFoundException("Payment method not found")).when(paymentMethodService).setDefaultPaymentMethod(userId, methodId);
+
+        // When & Then
+        mockMvc.perform(put("/api/users/{userId}/payment-methods/{methodId}/default", userId, methodId))
+                .andExpect(status().isNotFound());
+
+        verify(paymentMethodService, times(1)).setDefaultPaymentMethod(eq(userId), eq(methodId));
     }
 }

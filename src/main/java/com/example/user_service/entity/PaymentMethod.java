@@ -44,4 +44,8 @@ public class PaymentMethod {
         this.cardNumberMasked = cardNumberMasked;
         this.isDefault = isDefault;
     }
+
+    public void isDefault(boolean isDefault) {
+        this.isDefault = isDefault;
+    }
 }

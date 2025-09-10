@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collections;
 import java.util.Optional;
 import java.util.List;
 import java.util.Arrays;
@@ -223,5 +224,66 @@ class PaymentMethodServiceTest {
                 .hasMessageContaining("Payment method not found for user ID: 1 and method ID: 1");
 
         verify(paymentMethodRepository, never()).delete(any(PaymentMethod.class));
+    }
+
+    @Test
+    @DisplayName("유효한 사용자 ID와 결제 수단 ID로 기본 결제 수단 설정 시 성공한다")
+    void setDefaultPaymentMethod_withValidIds_success() {
+        // Given
+        Long userId = 1L;
+        Long methodIdToSetDefault = 2L;
+        PaymentMethod pm1 = PaymentMethod.builder().user(testUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
+        ReflectionTestUtils.setField(pm1, "id", 1L);
+        PaymentMethod pm2 = PaymentMethod.builder().user(testUser).billingKey("dummy-2").cardIssuer("MasterCard").cardNumberMasked("5678-XXXX-XXXX-2222").isDefault(false).build();
+        ReflectionTestUtils.setField(pm2, "id", methodIdToSetDefault);
+        List<PaymentMethod> paymentMethods = Arrays.asList(pm1, pm2);
+
+        when(paymentMethodRepository.findByUserId(userId)).thenReturn(paymentMethods);
+        when(paymentMethodRepository.saveAll(anyList())).thenReturn(paymentMethods); // Mock saveAll
+
+        // When
+        paymentMethodService.setDefaultPaymentMethod(userId, methodIdToSetDefault);
+
+        // Then
+        assertThat(pm1.isDefault()).isFalse();
+        assertThat(pm2.isDefault()).isTrue();
+        verify(paymentMethodRepository, times(1)).findByUserId(userId);
+        verify(paymentMethodRepository, times(1)).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("기본 결제 수단 설정 시 해당 사용자의 결제 수단이 없으면 PaymentMethodNotFoundException이 발생한다")
+    void setDefaultPaymentMethod_noPaymentMethodsForUser_throwsPaymentMethodNotFoundException() {
+        // Given
+        Long userId = 1L;
+        Long methodId = 1L;
+        when(paymentMethodRepository.findByUserId(userId)).thenReturn(Collections.emptyList());
+
+        // When & Then
+        assertThatThrownBy(() -> paymentMethodService.setDefaultPaymentMethod(userId, methodId))
+                .isInstanceOf(PaymentMethodNotFoundException.class)
+                .hasMessageContaining("No payment methods found for user ID: 1");
+
+        verify(paymentMethodRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("기본 결제 수단 설정 시 지정된 결제 수단 ID를 찾을 수 없으면 PaymentMethodNotFoundException이 발생한다")
+    void setDefaultPaymentMethod_methodIdNotFound_throwsPaymentMethodNotFoundException() {
+        // Given
+        Long userId = 1L;
+        Long methodId = 999L;
+        PaymentMethod pm1 = PaymentMethod.builder().user(testUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
+        ReflectionTestUtils.setField(pm1, "id", 1L);
+        List<PaymentMethod> paymentMethods = Arrays.asList(pm1);
+
+        when(paymentMethodRepository.findByUserId(userId)).thenReturn(paymentMethods);
+
+        // When & Then
+        assertThatThrownBy(() -> paymentMethodService.setDefaultPaymentMethod(userId, methodId))
+                .isInstanceOf(PaymentMethodNotFoundException.class)
+                .hasMessageContaining("Payment method not found for user ID: 1 and method ID: 999");
+
+        verify(paymentMethodRepository, never()).saveAll(anyList());
     }
 }

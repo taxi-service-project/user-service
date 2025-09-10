@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("/api/users/{userId}/payment-methods")
@@ -41,6 +42,12 @@ public class PaymentMethodController {
     @DeleteMapping("/{methodId}")
     public ResponseEntity<Void> deletePaymentMethod(@PathVariable Long userId, @PathVariable Long methodId) {
         paymentMethodService.deletePaymentMethod(userId, methodId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{methodId}/default")
+    public ResponseEntity<Void> setDefaultPaymentMethod(@PathVariable Long userId, @PathVariable Long methodId) {
+        paymentMethodService.setDefaultPaymentMethod(userId, methodId);
         return ResponseEntity.noContent().build();
     }
 }
