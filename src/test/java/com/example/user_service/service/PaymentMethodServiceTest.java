@@ -1,7 +1,7 @@
 package com.example.user_service.service;
 
-import com.example.user_service.dto.PaymentMethodRegisterRequest;
-import com.example.user_service.dto.PaymentMethodRegisterResponse;
+import com.example.user_service.dto.request.PaymentMethodRegisterRequest;
+import com.example.user_service.dto.response.PaymentMethodRegisterResponse;
 import com.example.user_service.entity.PaymentMethod;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.UserNotFoundException;
@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.List;
 import java.util.Arrays;
-import com.example.user_service.dto.PaymentMethodResponse;
+import com.example.user_service.dto.response.PaymentMethodResponse;
 import com.example.user_service.exception.PaymentMethodNotFoundException;
 
 import static org.assertj.core.api.Assertions.assertThat;

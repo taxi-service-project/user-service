@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -15,6 +17,9 @@ public class PaymentMethod {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, updatable = false, unique = true)
+    private String paymentMethodId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -37,6 +42,7 @@ public class PaymentMethod {
 
     @Builder
     public PaymentMethod(User user, String billingKey, String cardIssuer, String expiryDate, String cardNumberMasked, boolean isDefault) {
+        this.paymentMethodId = "pm-" + UUID.randomUUID();
         this.user = user;
         this.billingKey = billingKey;
         this.cardIssuer = cardIssuer;

@@ -1,8 +1,8 @@
 package com.example.user_service.controller;
 
-import com.example.user_service.dto.PaymentMethodRegisterRequest;
-import com.example.user_service.dto.PaymentMethodRegisterResponse;
-import com.example.user_service.dto.PaymentMethodResponse;
+import com.example.user_service.dto.request.PaymentMethodRegisterRequest;
+import com.example.user_service.dto.response.PaymentMethodRegisterResponse;
+import com.example.user_service.dto.response.PaymentMethodResponse;
 import com.example.user_service.service.PaymentMethodService;
 import com.example.user_service.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;

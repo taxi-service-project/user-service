@@ -1,6 +1,5 @@
 package com.example.user_service.exception;
 
-import com.example.user_service.dto.ErrorResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

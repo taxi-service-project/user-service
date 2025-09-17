@@ -1,8 +1,9 @@
 package com.example.user_service.service;
 
-import com.example.user_service.dto.PaymentMethodRegisterRequest;
-import com.example.user_service.dto.PaymentMethodRegisterResponse;
-import com.example.user_service.dto.PaymentMethodResponse;
+import com.example.user_service.dto.request.PaymentMethodRegisterRequest;
+import com.example.user_service.dto.response.PaymentMethodRegisterResponse;
+import com.example.user_service.dto.response.PaymentMethodResponse;
+import com.example.user_service.dto.response.UserInfoForPaymentResponse;
 import com.example.user_service.entity.PaymentMethod;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.UserNotFoundException;
@@ -134,6 +135,26 @@ public class PaymentMethodService {
 
         paymentMethodRepository.saveAll(userPaymentMethods);
         log.info("사용자 ID: {} 의 결제 수단 ID: {} 가 기본 결제 수단으로 설정되었습니다.", userId, methodId);
+    }
+
+    @Transactional(readOnly = true)
+    public UserInfoForPaymentResponse getDefaultPaymentMethod(String userId) {
+        log.info("사용자 ID: {} 의 기본 결제 수단 조회를 시도합니다.", userId);
+
+        PaymentMethod paymentMethod = paymentMethodRepository.findByUserUserIdAndIsDefaultTrue(userId)
+                .orElseThrow(() -> {
+                    log.warn("기본 결제 수단 조회 실패: 사용자 ID {} 에 해당하는 기본 결제 수단이 없습니다.", userId);
+                    return new PaymentMethodNotFoundException("No default payment method found for user ID: " + userId);
+                });
+
+        User user = userRepository.findById(paymentMethod.getUser().getId())
+                .orElseThrow(() -> {
+                    log.warn("기본 결제 수단 조회 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", paymentMethod.getUser().getId());
+                    return new UserNotFoundException("User not found with ID: " + paymentMethod.getUser().getId());
+                });
+
+        log.info("사용자 ID: {} 의 기본 결제 수단 조회 성공. 결제 수단 ID: {}", userId, paymentMethod.getId());
+        return new UserInfoForPaymentResponse(user.getUserId(), user.getName(), user.getEmail(), paymentMethod.getPaymentMethodId(), paymentMethod.getBillingKey());
     }
 
     private String inferCardIssuer(String cardNumber) {

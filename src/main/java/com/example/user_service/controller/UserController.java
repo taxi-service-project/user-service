@@ -1,10 +1,10 @@
 package com.example.user_service.controller;
 
-import com.example.user_service.dto.UserCreateRequest;
-import com.example.user_service.dto.UserCreateResponse;
-import com.example.user_service.dto.UserUpdateRequest;
-import com.example.user_service.dto.UserProfileResponse;
-import com.example.user_service.dto.UserPasswordChangeRequest;
+import com.example.user_service.dto.request.UserCreateRequest;
+import com.example.user_service.dto.response.UserCreateResponse;
+import com.example.user_service.dto.request.UserUpdateRequest;
+import com.example.user_service.dto.response.UserProfileResponse;
+import com.example.user_service.dto.request.UserPasswordChangeRequest;
 import com.example.user_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

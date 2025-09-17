@@ -1,6 +1,9 @@
 package com.example.user_service;
 
-import com.example.user_service.dto.*;
+import com.example.user_service.dto.request.UserCreateRequest;
+import com.example.user_service.dto.request.UserPasswordChangeRequest;
+import com.example.user_service.dto.request.UserUpdateRequest;
+import com.example.user_service.dto.response.UserCreateResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
@@ -8,8 +11,8 @@ import com.example.user_service.exception.InvalidPasswordException;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.service.UserService;
-import com.example.user_service.dto.UserUpdateResponse;
-import com.example.user_service.dto.UserProfileResponse;
+import com.example.user_service.dto.response.UserUpdateResponse;
+import com.example.user_service.dto.response.UserProfileResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

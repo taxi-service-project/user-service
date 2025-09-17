@@ -1,16 +1,17 @@
 package com.example.user_service.service;
 
-import com.example.user_service.dto.UserCreateRequest;
-import com.example.user_service.dto.UserCreateResponse;
-import com.example.user_service.dto.UserUpdateRequest;
-import com.example.user_service.dto.UserUpdateResponse;
-import com.example.user_service.dto.UserProfileResponse;
+import com.example.user_service.dto.request.UserCreateRequest;
+import com.example.user_service.dto.response.InternalUserResponse;
+import com.example.user_service.dto.response.UserCreateResponse;
+import com.example.user_service.dto.request.UserUpdateRequest;
+import com.example.user_service.dto.response.UserUpdateResponse;
+import com.example.user_service.dto.response.UserProfileResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.exception.UserNotFoundException;
-import com.example.user_service.dto.UserPasswordChangeRequest;
+import com.example.user_service.dto.request.UserPasswordChangeRequest;
 import com.example.user_service.exception.InvalidPasswordException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +49,7 @@ public class UserService {
         User savedUser = userRepository.save(newUser);
         log.info("사용자 ID: {} 로 사용자 생성 성공.", savedUser.getId());
 
-        return new UserCreateResponse(savedUser.getId(), savedUser.getEmail(), savedUser.getName());
+        return new UserCreateResponse(savedUser.getId(), savedUser.getUserId(), savedUser.getEmail(), savedUser.getName());
     }
 
     @Transactional
@@ -69,7 +70,7 @@ public class UserService {
                                  user.update(request.name(), request.phoneNumber());
                                  User updatedUser = userRepository.save(user);
                                  log.info("사용자 ID: {} 수정 성공.", id);
-                                 return new UserUpdateResponse(updatedUser.getId(), updatedUser.getName(),
+                                 return new UserUpdateResponse(updatedUser.getId(), updatedUser.getUserId(), updatedUser.getName(),
                                          updatedUser.getEmail(), updatedUser.getPhoneNumber());
                              })
                              .orElseThrow(() -> {
@@ -85,7 +86,7 @@ public class UserService {
         return userRepository.findById(id)
                 .map(user -> {
                     log.info("사용자 ID: {} 프로필 조회 성공.", id);
-                    return new UserProfileResponse(user.getId(), user.getEmail(), user.getName(), user.getPhoneNumber());
+                    return new UserProfileResponse(user.getId(),user.getUserId(), user.getEmail(), user.getName(), user.getPhoneNumber());
                 })
                 .orElseThrow(() -> {
                     log.warn("사용자 프로필 조회 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", id);
@@ -111,4 +112,12 @@ public class UserService {
         userRepository.save(user);
         log.info("사용자 ID: {} 비밀번호 변경 성공.", id);
     }
+
+    @Transactional(readOnly = true)
+    public InternalUserResponse getUserByUserId(String userId) {
+        User user = userRepository.findByUserId(userId)
+                                  .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
+        return InternalUserResponse.fromEntity(user);
+    }
+
 }

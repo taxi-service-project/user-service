@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -15,6 +17,9 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, updatable = false, unique = true)
+    private String userId;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -30,6 +35,7 @@ public class User {
 
     @Builder
     public User(String email, String password, String name, String phoneNumber) {
+        this.userId = UUID.randomUUID().toString();
         this.email = email;
         this.password = password;
         this.name = name;

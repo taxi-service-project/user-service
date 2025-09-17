@@ -1,6 +1,11 @@
 package com.example.user_service.controller;
 
-import com.example.user_service.dto.*;
+import com.example.user_service.dto.request.UserCreateRequest;
+import com.example.user_service.dto.request.UserPasswordChangeRequest;
+import com.example.user_service.dto.request.UserUpdateRequest;
+import com.example.user_service.dto.response.UserCreateResponse;
+import com.example.user_service.dto.response.UserProfileResponse;
+import com.example.user_service.dto.response.UserUpdateResponse;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,7 +49,7 @@ class UserControllerTest {
                 "Test User",
                 "01012345678"
         );
-        UserCreateResponse response = new UserCreateResponse(1L, "test@example.com", "Test User");
+        UserCreateResponse response = new UserCreateResponse(1L, "uuid", "test@example.com", "Test User");
 
         when(userService.createUser(any(UserCreateRequest.class))).thenReturn(response);
 
@@ -93,7 +98,7 @@ class UserControllerTest {
         Long userId = 1L;
         UserUpdateRequest request = new UserUpdateRequest("Updated Name", "010-9876-5432");
 
-        when(userService.updateUser(eq(userId), any(UserUpdateRequest.class))).thenReturn(new UserUpdateResponse(userId, request.name(), "test@example.com", request.phoneNumber()));
+        when(userService.updateUser(eq(userId), any(UserUpdateRequest.class))).thenReturn(new UserUpdateResponse(userId, "test-uuid", request.name(), "test@example.com", request.phoneNumber()));
 
         // When & Then
         mockMvc.perform(put("/api/users/{id}", userId)
@@ -143,7 +148,7 @@ class UserControllerTest {
     void getUserProfile_withValidId_returns200OkAndUserProfile() throws Exception {
         // Given
         Long userId = 1L;
-        UserProfileResponse expectedResponse = new UserProfileResponse(userId, "test@example.com", "Test User", "010-1234-5678");
+        UserProfileResponse expectedResponse = new UserProfileResponse(userId, "test-uuid", "test@example.com", "Test User", "010-1234-5678");
 
         when(userService.getUserProfile(userId)).thenReturn(expectedResponse);
 
@@ -151,6 +156,7 @@ class UserControllerTest {
         mockMvc.perform(get("/api/users/{id}", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(userId))
+                .andExpect(jsonPath("$.userId").value("test-uuid"))
                 .andExpect(jsonPath("$.email").value("test@example.com"))
                 .andExpect(jsonPath("$.name").value("Test User"))
                 .andExpect(jsonPath("$.phoneNumber").value("010-1234-5678"));

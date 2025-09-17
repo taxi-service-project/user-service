@@ -1,11 +1,8 @@
 package com.example.user_service.exception;
 
-import com.example.user_service.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import com.example.user_service.exception.InvalidPasswordException;
-import com.example.user_service.exception.PaymentMethodNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
