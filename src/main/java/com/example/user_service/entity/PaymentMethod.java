@@ -51,7 +51,11 @@ public class PaymentMethod {
         this.isDefault = isDefault;
     }
 
-    public void isDefault(boolean isDefault) {
+    public void setDefault(boolean isDefault) {
         this.isDefault = isDefault;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

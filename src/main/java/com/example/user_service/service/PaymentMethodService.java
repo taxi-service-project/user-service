@@ -55,6 +55,8 @@ public class PaymentMethodService {
                 .isDefault(isDefault)
                 .build();
 
+        user.addPaymentMethod(paymentMethod);
+
         PaymentMethod savedPaymentMethod = paymentMethodRepository.save(paymentMethod);
         log.info("사용자 ID: {} 에 대한 결제 수단 ID: {} 등록 성공.", userId, savedPaymentMethod.getId());
 
@@ -122,7 +124,7 @@ public class PaymentMethodService {
             }
             // 모든 결제 수단의 is_default 값을 false로 일괄 업데이트합니다.
             if (pm.isDefault()) {
-                pm.isDefault(false);
+                pm.setDefault(false);
             }
         }
 
@@ -131,7 +133,7 @@ public class PaymentMethodService {
             throw new PaymentMethodNotFoundException("Payment method not found for user ID: " + userId + " and method ID: " + methodId);
         }
 
-        targetPaymentMethod.isDefault(true);
+        targetPaymentMethod.setDefault(true);
 
         paymentMethodRepository.saveAll(userPaymentMethods);
         log.info("사용자 ID: {} 의 결제 수단 ID: {} 가 기본 결제 수단으로 설정되었습니다.", userId, methodId);
@@ -147,13 +149,9 @@ public class PaymentMethodService {
                     return new PaymentMethodNotFoundException("No default payment method found for user ID: " + userId);
                 });
 
-        User user = userRepository.findById(paymentMethod.getUser().getId())
-                .orElseThrow(() -> {
-                    log.warn("기본 결제 수단 조회 실패: ID {} 에 해당하는 사용자를 찾을 수 없습니다.", paymentMethod.getUser().getId());
-                    return new UserNotFoundException("User not found with ID: " + paymentMethod.getUser().getId());
-                });
-
+        User user = paymentMethod.getUser();
         log.info("사용자 ID: {} 의 기본 결제 수단 조회 성공. 결제 수단 ID: {}", userId, paymentMethod.getId());
+
         return new UserInfoForPaymentResponse(user.getUserId(), user.getName(), user.getEmail(), paymentMethod.getPaymentMethodId(), paymentMethod.getBillingKey());
     }
 

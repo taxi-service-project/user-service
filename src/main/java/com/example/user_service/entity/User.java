@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -20,6 +22,9 @@ public class User {
 
     @Column(nullable = false, updatable = false, unique = true)
     private String userId;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PaymentMethod> paymentMethods = new ArrayList<>();
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -49,5 +54,12 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public void addPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethods.add(paymentMethod);
+        if (paymentMethod.getUser() != this) {
+            paymentMethod.setUser(this);
+        }
     }
 }
