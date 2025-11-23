@@ -10,14 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users")
@@ -33,25 +26,30 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id, @RequestHeader("X-User-Id") String authenticatedUserId) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest userUpdateRequest) {
+    public ResponseEntity<Void> updateUser(@PathVariable Long id,
+                                           @Valid @RequestBody UserUpdateRequest userUpdateRequest,
+                                           @RequestHeader("X-User-Id") String authenticatedUserId) {
         userService.updateUser(id, userUpdateRequest);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable Long id) {
+    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable Long id,
+                                                              @RequestHeader("X-User-Id") String authenticatedUserId) {
         UserProfileResponse response = userService.getUserProfile(id);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/password")
-    public ResponseEntity<Void> changePassword(@PathVariable Long id, @Valid @RequestBody UserPasswordChangeRequest request) {
+    public ResponseEntity<Void> changePassword(@PathVariable Long id,
+                                               @Valid @RequestBody UserPasswordChangeRequest request,
+                                               @RequestHeader("X-User-Id") String authenticatedUserId) {
         userService.changePassword(id, request);
         return ResponseEntity.ok().build();
     }

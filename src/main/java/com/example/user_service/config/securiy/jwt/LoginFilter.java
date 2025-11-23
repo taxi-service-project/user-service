@@ -43,7 +43,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) {
         CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-        String username = customUserDetails.getUsername();
+        String userId = customUserDetails.getUserId();
 
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
@@ -51,11 +51,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String role = auth.getAuthority();
 
         // 1. 토큰 생성
-        String access = jwtUtil.createJwt("access", username, role, 600000L); // 10분
-        String refresh = jwtUtil.createJwt("refresh", username, role, 86400000L); // 24시간
+        String access = jwtUtil.createJwt("access", userId, role, 600000L); // 10분
+        String refresh = jwtUtil.createJwt("refresh", userId, role, 86400000L); // 24시간
 
         // 2. Refresh 토큰 DB 저장
-        addRefreshEntity(username, refresh, 86400000L);
+        addRefreshEntity(userId, refresh, 86400000L);
 
         // 3. 응답 설정 (Header + Cookie)
         response.setHeader("access", access);

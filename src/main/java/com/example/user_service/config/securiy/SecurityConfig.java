@@ -1,6 +1,5 @@
 package com.example.user_service.config.securiy;
 
-import com.example.user_service.config.securiy.jwt.JWTFilter;
 import com.example.user_service.config.securiy.jwt.JWTUtil;
 import com.example.user_service.config.securiy.jwt.LoginFilter;
 import com.example.user_service.repository.RefreshTokenRepository;
@@ -68,21 +67,13 @@ public class SecurityConfig {
         http
                 .httpBasic((auth) -> auth.disable());
 
-        // JWTFilter 등록
-        http
-                .addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
-
         // LoginFilter 등록
         http
                 .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, refreshTokenRepository), UsernamePasswordAuthenticationFilter.class);
 
-        http
-                .authorizeHttpRequests((auth) -> auth
-                        .requestMatchers(
-                                "/login", "/", "/health", "/api/health", "/api/users/join", "/reissue",
-                                "/swagger-ui/**", "/v3/api-docs/**"
-                        ).permitAll()
-                        .anyRequest().authenticated());
+        http.authorizeHttpRequests((auth) -> auth
+                .requestMatchers("/**").permitAll()
+        );
 
         http
                 .sessionManagement((session) -> session
