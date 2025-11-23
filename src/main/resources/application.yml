@@ -15,7 +15,7 @@ spring:
 
   jwt:
     issuer: dsada
-    secret: taxi-project
+    secret: test
 
 eureka:
   client:

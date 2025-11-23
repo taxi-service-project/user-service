@@ -15,6 +15,7 @@ import com.example.user_service.dto.request.UserPasswordChangeRequest;
 import com.example.user_service.exception.InvalidPasswordException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Transactional
     public UserCreateResponse createUser(UserCreateRequest request) {
@@ -43,7 +45,7 @@ public class UserService {
                 .email(request.email())
                 .username(request.username())
                 .role(request.role())
-                .password(request.password())
+                .password(bCryptPasswordEncoder.encode(request.password()))
                 .phoneNumber(request.phoneNumber())
                 .build();
 
@@ -109,7 +111,7 @@ public class UserService {
             throw new InvalidPasswordException("Current password does not match.");
         }
 
-        user.setPassword(request.newPassword());
+        user.setPassword(bCryptPasswordEncoder.encode(request.newPassword()));
         userRepository.save(user);
         log.info("사용자 ID: {} 비밀번호 변경 성공.", id);
     }
