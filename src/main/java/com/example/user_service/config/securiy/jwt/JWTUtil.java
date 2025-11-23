@@ -12,35 +12,31 @@ import java.util.Date;
 @Component
 public class JWTUtil {
 
-    private SecretKey secretKey;
+    private final SecretKey secretKey;
 
     public JWTUtil(@Value("${spring.jwt.secret}") String secret) {
-
-
         secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
     }
 
     public String getUsername(String token) {
-
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("username", String.class);
     }
 
     public String getRole(String token) {
-
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("role", String.class);
     }
 
-    public Boolean isExpired(String token) {
+    public String getCategory(String token) {
+        return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("category", String.class);
+    }
 
+    public Boolean isExpired(String token) {
         return Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().getExpiration().before(new Date());
     }
 
-    public String createJwt(String username, String role, Long expiredMs) {
-        if (expiredMs == null || expiredMs <= 0) {
-            expiredMs = 1000 * 60 * 60 * 1L; // 기본값: 1시간
-        }
-
+    public String createJwt(String category, String username, String role, Long expiredMs) {
         return Jwts.builder()
+                   .claim("category", category) // "access" or "refresh"
                    .claim("username", username)
                    .claim("role", role)
                    .issuedAt(new Date(System.currentTimeMillis()))
@@ -48,5 +44,4 @@ public class JWTUtil {
                    .signWith(secretKey)
                    .compact();
     }
-
 }

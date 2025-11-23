@@ -1,9 +1,14 @@
 package com.example.user_service.config.securiy.jwt;
 
 import com.example.user_service.config.securiy.CustomUserDetails;
+import com.example.user_service.entity.RefreshToken;
+import com.example.user_service.repository.RefreshTokenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -12,59 +17,74 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
-    //JWTUtil 주입
     private final JWTUtil jwtUtil;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
-
+    public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil, RefreshTokenRepository refreshTokenRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
-
-        //클라이언트 요청에서 username, password 추출
         String username = obtainUsername(request);
         String password = obtainPassword(request);
-
-        //스프링 시큐리티에서 username과 password를 검증하기 위해서는 token에 담아야 함
         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password, null);
-
-        //token에 담은 검증을 위한 AuthenticationManager로 전달
         return authenticationManager.authenticate(authToken);
     }
 
-    //로그인 성공시 실행하는 메소드 (여기서 JWT를 발급하면 됨)
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authentication) {
-
-        //UserDetailsS
         CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
-
         String username = customUserDetails.getUsername();
 
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         GrantedAuthority auth = iterator.next();
-
         String role = auth.getAuthority();
 
-        String token = jwtUtil.createJwt(username, role, 1000 * 60 * 60 * 3L);
+        // 1. 토큰 생성
+        String access = jwtUtil.createJwt("access", username, role, 600000L); // 10분
+        String refresh = jwtUtil.createJwt("refresh", username, role, 86400000L); // 24시간
 
-        response.addHeader("Authorization", "Bearer " + token);
+        // 2. Refresh 토큰 DB 저장
+        addRefreshEntity(username, refresh, 86400000L);
+
+        // 3. 응답 설정 (Header + Cookie)
+        response.setHeader("access", access);
+
+        // SameSite 설정이 적용된 쿠키 생성
+        ResponseCookie cookie = createRefreshCookie(refresh);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        response.setStatus(HttpStatus.OK.value());
     }
 
-    //로그인 실패시 실행하는 메소드
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) {
-
-        //로그인 실패시 401 응답 코드 반환
         response.setStatus(401);
+    }
+
+    private void addRefreshEntity(String username, String refresh, Long expiredMs) {
+        Date date = new Date(System.currentTimeMillis() + expiredMs);
+        RefreshToken refreshToken = new RefreshToken(username, refresh, date.toString());
+        refreshTokenRepository.save(refreshToken);
+    }
+
+    private ResponseCookie createRefreshCookie(String refresh) {
+        return ResponseCookie.from("refresh", refresh)
+                             .path("/")
+                             .sameSite("Strict") // CSRF 방어
+                             .httpOnly(true)     // XSS 방어
+                             .secure(false)      // HTTPS 적용 시 true
+                             .maxAge(24 * 60 * 60)
+                             .build();
     }
 }

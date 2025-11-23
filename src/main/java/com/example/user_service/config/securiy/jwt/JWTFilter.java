@@ -86,7 +86,7 @@ public class JWTFilter extends OncePerRequestFilter {
     }
 
     private void setErrorResponse(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
 
         PrintWriter writer = response.getWriter();

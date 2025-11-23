@@ -15,7 +15,7 @@ spring:
 
   jwt:
     issuer: dsada
-    secret: test
+    secret: test-v3ryLo0ngAndS3cretKeyForJwtTokenGenerationMustBeAtLeast256Bits
 
 eureka:
   client:

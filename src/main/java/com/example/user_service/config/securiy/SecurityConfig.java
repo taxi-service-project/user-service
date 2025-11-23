@@ -3,7 +3,9 @@ package com.example.user_service.config.securiy;
 import com.example.user_service.config.securiy.jwt.JWTFilter;
 import com.example.user_service.config.securiy.jwt.JWTUtil;
 import com.example.user_service.config.securiy.jwt.LoginFilter;
+import com.example.user_service.repository.RefreshTokenRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,25 +23,20 @@ import java.util.Collections;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
-
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JWTUtil jwtUtil) {
-        this.authenticationConfiguration = authenticationConfiguration;
-        this.jwtUtil = jwtUtil;
-    }
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-
         return configuration.getAuthenticationManager();
     }
 
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
-
         return new BCryptPasswordEncoder();
     }
 
@@ -48,61 +45,48 @@ public class SecurityConfig {
 
         http
                 .cors((corsCustomizer -> corsCustomizer.configurationSource(new CorsConfigurationSource() {
-
                     @Override
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
-
                         CorsConfiguration configuration = new CorsConfiguration();
-
                         configuration.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
-                        configuration.setAllowedOrigins(Collections.singletonList("http://43.203.187.40:8080"));
-                        configuration.setAllowedOrigins(Collections.singletonList("http://43.203.187.40"));
                         configuration.setAllowedMethods(Collections.singletonList("*"));
                         configuration.setAllowCredentials(true);
                         configuration.setAllowedHeaders(Collections.singletonList("*"));
                         configuration.setMaxAge(3600L);
-
                         configuration.setExposedHeaders(Collections.singletonList("Authorization"));
-
                         return configuration;
                     }
                 })));
 
+        // csrf disable (SameSite 쿠키로 대체)
         http
-                .csrf(((auth) -> auth.disable()));
+                .csrf((auth) -> auth.disable());
 
         http
-                .formLogin(((auth) -> auth.disable()));
+                .formLogin((auth) -> auth.disable());
 
         http
-                .httpBasic(((auth) -> auth.disable()));
+                .httpBasic((auth) -> auth.disable());
 
+        // JWTFilter 등록
         http
                 .addFilterBefore(new JWTFilter(jwtUtil), LoginFilter.class);
 
+        // LoginFilter 등록
         http
-                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil), UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil, refreshTokenRepository), UsernamePasswordAuthenticationFilter.class);
 
         http
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers(
-                                "/login",
-                                "/",
-                                "/health",
-                                "/api/health",
-                                "/api/users/join",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs",
-                                "/swagger-resources/**",
-                                "/webjars/**"
+                                "/login", "/", "/health", "/api/health", "/api/users/join", "/reissue",
+                                "/swagger-ui/**", "/v3/api-docs/**"
                         ).permitAll()
                         .anyRequest().authenticated());
 
         http
                 .sessionManagement((session) -> session
-                        .sessionCreationPolicy((SessionCreationPolicy.STATELESS)));
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
