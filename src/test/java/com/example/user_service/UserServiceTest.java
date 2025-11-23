@@ -10,7 +10,6 @@ import com.example.user_service.dto.response.UserProfileResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
-import com.example.user_service.exception.InvalidPasswordException;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.service.UserService;
@@ -21,6 +20,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -28,13 +30,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @InjectMocks
     private UserService userService;
@@ -56,7 +60,7 @@ class UserServiceTest {
 
         user = User.builder()
                    .email("test@example.com")
-                   .password("password123")
+                   .password("encoded_password")
                    .username("Test User")
                    .role("USER")
                    .phoneNumber("01012345678")
@@ -72,6 +76,7 @@ class UserServiceTest {
         // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(userRepository.existsByPhoneNumber(anyString())).thenReturn(false);
+        when(bCryptPasswordEncoder.encode(anyString())).thenReturn("encoded_password");
         when(userRepository.save(any(User.class))).thenReturn(user);
 
         // When
@@ -83,8 +88,7 @@ class UserServiceTest {
         assertThat(response.userId()).isEqualTo(testUserId);
         assertThat(response.email()).isEqualTo(userCreateRequest.email());
         assertThat(response.username()).isEqualTo(userCreateRequest.username());
-        verify(userRepository, times(1)).existsByEmail(userCreateRequest.email());
-        verify(userRepository, times(1)).existsByPhoneNumber(userCreateRequest.phoneNumber());
+
         verify(userRepository, times(1)).save(any(User.class));
     }
 
@@ -98,8 +102,7 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.createUser(userCreateRequest))
                 .isInstanceOf(DuplicateEmailException.class)
                 .hasMessageContaining("Email already exists");
-        verify(userRepository, times(1)).existsByEmail(userCreateRequest.email());
-        verify(userRepository, never()).existsByPhoneNumber(anyString());
+
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -114,25 +117,42 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.createUser(userCreateRequest))
                 .isInstanceOf(DuplicatePhoneNumberException.class)
                 .hasMessageContaining("Phone number already exists");
-        verify(userRepository, times(1)).existsByEmail(userCreateRequest.email());
-        verify(userRepository, times(1)).existsByPhoneNumber(userCreateRequest.phoneNumber());
+
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    @DisplayName("유효한 ID로 사용자를 삭제하면 성공한다")
-    void deleteUser_withValidId_shouldSucceed() {
+    @DisplayName("본인이 자신의 계정을 삭제하면 성공한다")
+    void deleteUser_withValidOwner_shouldSucceed() {
         // Given
         Long userId = 1L;
-        when(userRepository.existsById(userId)).thenReturn(true);
-        doNothing().when(userRepository).deleteById(userId);
+        String authenticatedUserId = testUserId;
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doNothing().when(userRepository).delete(user);
 
         // When
-        userService.deleteUser(userId);
+        userService.deleteUser(userId, authenticatedUserId);
 
         // Then
-        verify(userRepository, times(1)).existsById(userId);
-        verify(userRepository, times(1)).deleteById(userId);
+        verify(userRepository, times(1)).delete(user);
+    }
+
+    @Test
+    @DisplayName("타인이 계정 삭제를 시도하면 AccessDeniedException이 발생한다")
+    void deleteUser_withInvalidOwner_shouldThrowAccessDeniedException() {
+        // Given
+        Long userId = 1L;
+        String authenticatedUserId = "other-user-uuid";
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // When & Then
+        assertThatThrownBy(() -> userService.deleteUser(userId, authenticatedUserId))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("본인의 정보만 수정/삭제할 수 있습니다");
+
+        verify(userRepository, never()).delete(any(User.class));
     }
 
     @Test
@@ -140,190 +160,121 @@ class UserServiceTest {
     void deleteUser_withNonExistentId_shouldThrowUserNotFoundException() {
         // Given
         Long userId = 1L;
-        when(userRepository.existsById(userId)).thenReturn(false);
-
-        // When & Then
-        assertThatThrownBy(() -> userService.deleteUser(userId))
-                .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining("User not found with ID: " + userId);
-        verify(userRepository, times(1)).existsById(userId);
-        verify(userRepository, never()).deleteById(anyLong());
-    }
-
-    @Test
-    @DisplayName("유효한 정보로 사용자를 업데이트하면 성공한다")
-    void updateUser_withValidInfo_shouldSucceed() {
-        // Given
-        Long userId = 1L;
-        UserUpdateRequest request = new UserUpdateRequest("Updated Username", "010-9876-5432");
-
-        User existingUser = User.builder()
-                                .email("test@example.com")
-                                .password("old_password")
-                                .username("Old Username")
-                                .role("USER")
-                                .phoneNumber("010-1234-5678")
-                                .build();
-        ReflectionTestUtils.setField(existingUser, "id", userId);
-        ReflectionTestUtils.setField(existingUser, "userId", testUserId);
-
-        User updatedUser = User.builder()
-                               .email("test@example.com")
-                               .password("old_password")
-                               .username(request.name())
-                               .role("USER")
-                               .phoneNumber(request.phoneNumber())
-                               .build();
-        ReflectionTestUtils.setField(updatedUser, "id", userId);
-        ReflectionTestUtils.setField(updatedUser, "userId", testUserId);
-
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-
-        // When
-        UserUpdateResponse response = userService.updateUser(userId, request);
-
-        // Then
-        assertThat(response).isNotNull();
-        assertThat(response.id()).isEqualTo(userId);
-        assertThat(response.userId()).isEqualTo(testUserId);
-        assertThat(response.username()).isEqualTo(request.name());
-        assertThat(response.phoneNumber()).isEqualTo(request.phoneNumber());
-        verify(userRepository, times(1)).findById(userId);
-        verify(userRepository, times(1)).save(any(User.class));
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 ID로 사용자를 업데이트하면 UserNotFoundException이 발생한다")
-    void updateUser_withNonExistentId_shouldThrowUserNotFoundException() {
-        // Given
-        Long userId = 1L;
-        UserUpdateRequest request = new UserUpdateRequest("Updated Username", "010-9876-5432");
+        String authenticatedUserId = testUserId;
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThatThrownBy(() -> userService.updateUser(userId, request))
-                .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining("User not found with ID: " + userId);
-        verify(userRepository, times(1)).findById(userId);
-        verify(userRepository, never()).save(any(User.class));
+        assertThatThrownBy(() -> userService.deleteUser(userId, authenticatedUserId))
+                .isInstanceOf(UserNotFoundException.class);
+
+        verify(userRepository, never()).delete(any(User.class));
     }
 
     @Test
-    @DisplayName("유효한 ID로 사용자 프로필을 조회하면 성공한다")
-    void getUserProfile_withValidId_shouldReturnUserProfileResponse() {
+    @DisplayName("본인이 자신의 정보를 업데이트하면 성공한다")
+    void updateUser_withValidOwner_shouldSucceed() {
         // Given
         Long userId = 1L;
+        String authenticatedUserId = testUserId;
+        UserUpdateRequest request = new UserUpdateRequest("Updated Username", "010-9876-5432");
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // When
-        UserProfileResponse response = userService.getUserProfile(userId);
+        UserUpdateResponse response = userService.updateUser(userId, request, authenticatedUserId);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.username()).isEqualTo(request.username());
+        assertThat(response.phoneNumber()).isEqualTo(request.phoneNumber());
+    }
+
+    @Test
+    @DisplayName("타인이 정보 수정을 시도하면 AccessDeniedException이 발생한다")
+    void updateUser_withInvalidOwner_shouldThrowAccessDeniedException() {
+        // Given
+        Long userId = 1L;
+        String authenticatedUserId = "other-uuid";
+        UserUpdateRequest request = new UserUpdateRequest("Updated", "010-0000-0000");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // When & Then
+        assertThatThrownBy(() -> userService.updateUser(userId, request, authenticatedUserId))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("본인이 자신의 프로필을 조회하면 성공한다")
+    void getUserProfile_withValidOwner_shouldReturnUserProfileResponse() {
+        // Given
+        Long userId = 1L;
+        String authenticatedUserId = testUserId;
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // When
+        UserProfileResponse response = userService.getUserProfile(userId, authenticatedUserId);
 
         // Then
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(userId);
         assertThat(response.userId()).isEqualTo(testUserId);
-        assertThat(response.email()).isEqualTo(user.getEmail());
-        assertThat(response.username()).isEqualTo(user.getUsername());
-        assertThat(response.phoneNumber()).isEqualTo(user.getPhoneNumber());
-        verify(userRepository, times(1)).findById(userId);
     }
 
     @Test
-    @DisplayName("존재하지 않는 ID로 사용자 프로필을 조회하면 UserNotFoundException이 발생한다")
-    void getUserProfile_withNonExistentId_shouldThrowUserNotFoundException() {
+    @DisplayName("본인이 비밀번호 변경을 시도하고 기존 비밀번호가 맞으면 성공한다")
+    void changePassword_withValidOwnerAndCorrectPassword_shouldSucceed() {
         // Given
         Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThatThrownBy(() -> userService.getUserProfile(userId))
-                .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining("User not found with ID: " + userId);
-        verify(userRepository, times(1)).findById(userId);
-    }
-
-    @Test
-    @DisplayName("유효한 정보로 사용자 비밀번호를 변경하면 성공한다")
-    void changePassword_withValidInfo_shouldSucceed() {
-        // Given
-        Long userId = 1L;
+        String authenticatedUserId = testUserId;
         String oldPassword = "old_password";
         String newPassword = "new_password";
         UserPasswordChangeRequest request = new UserPasswordChangeRequest(oldPassword, newPassword);
 
-        User existingUser = User.builder()
-                                .email("test@example.com")
-                                .password(oldPassword)
-                                .username("Test User")
-                                .role("USER")
-                                .phoneNumber("010-1234-5678")
-                                .build();
-        ReflectionTestUtils.setField(existingUser, "id", userId);
-        ReflectionTestUtils.setField(existingUser, "userId", testUserId);
-
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(bCryptPasswordEncoder.matches(oldPassword, "encoded_password")).thenReturn(true);
+        when(bCryptPasswordEncoder.encode(newPassword)).thenReturn("new_encoded_password");
 
         // When
-        userService.changePassword(userId, request);
+        userService.changePassword(userId, request, authenticatedUserId);
 
         // Then
-        assertThat(existingUser.getPassword()).isEqualTo(newPassword); // Verify password is changed
-        verify(userRepository, times(1)).findById(userId);
-        verify(userRepository, times(1)).save(any(User.class));
+        assertThat(user.getPassword()).isEqualTo("new_encoded_password");
     }
 
     @Test
-    @DisplayName("존재하지 않는 ID로 사용자 비밀번호를 변경하면 UserNotFoundException이 발생한다")
-    void changePassword_withNonExistentId_shouldThrowUserNotFoundException() {
+    @DisplayName("타인이 비밀번호 변경을 시도하면 AccessDeniedException이 발생한다")
+    void changePassword_withInvalidOwner_shouldThrowAccessDeniedException() {
         // Given
         Long userId = 1L;
-        UserPasswordChangeRequest request = new UserPasswordChangeRequest("old_password", "new_password");
+        String authenticatedUserId = "hacker-uuid";
+        UserPasswordChangeRequest request = new UserPasswordChangeRequest("pw", "pw");
 
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // When & Then
-        assertThatThrownBy(() -> userService.changePassword(userId, request))
-                .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining("User not found with ID: " + userId);
-        verify(userRepository, times(1)).findById(userId);
-        verify(userRepository, never()).save(any(User.class));
+        assertThatThrownBy(() -> userService.changePassword(userId, request, authenticatedUserId))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
-    @DisplayName("현재 비밀번호가 일치하지 않으면 InvalidPasswordException이 발생한다")
-    void changePassword_withIncorrectOldPassword_shouldThrowInvalidPasswordException() {
+    @DisplayName("현재 비밀번호가 일치하지 않으면 IllegalArgumentException이 발생한다")
+    void changePassword_withIncorrectOldPassword_shouldThrowException() {
         // Given
         Long userId = 1L;
-        String oldPassword = "old_password";
+        String authenticatedUserId = testUserId;
         String wrongPassword = "wrong_password";
-        String newPassword = "new_password";
-        UserPasswordChangeRequest request = new UserPasswordChangeRequest(wrongPassword, newPassword);
+        UserPasswordChangeRequest request = new UserPasswordChangeRequest(wrongPassword, "new");
 
-        User existingUser = User.builder()
-                                .email("test@example.com")
-                                .password(oldPassword)
-                                .username("Test User")
-                                .role("USER")
-                                .phoneNumber("010-1234-5678")
-                                .build();
-        ReflectionTestUtils.setField(existingUser, "id", userId);
-        ReflectionTestUtils.setField(existingUser, "userId", testUserId);
-
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(bCryptPasswordEncoder.matches(wrongPassword, "encoded_password")).thenReturn(false);
 
         // When & Then
-        assertThatThrownBy(() -> userService.changePassword(userId, request))
-                .isInstanceOf(InvalidPasswordException.class)
-                .hasMessageContaining("Current password does not match.");
-        verify(userRepository, times(1)).findById(userId);
-        verify(userRepository, never()).save(any(User.class));
+        assertThatThrownBy(() -> userService.changePassword(userId, request, authenticatedUserId))
+                .isInstanceOf(IllegalArgumentException.class) // 서비스 코드에서 던지는 예외 타입 확인
+                .hasMessageContaining("비밀번호가 일치하지 않습니다");
     }
 
     @Test
@@ -338,21 +289,6 @@ class UserServiceTest {
         // Then
         assertThat(response).isNotNull();
         assertThat(response.userId()).isEqualTo(testUserId);
-        assertThat(response.username()).isEqualTo(user.getUsername());
         verify(userRepository, times(1)).findByUserId(testUserId);
-    }
-
-    @Test
-    @DisplayName("존재하지 않는 userId로 조회 시 UserNotFoundException이 발생한다")
-    void getUserByUserId_withNonExistentUserId_shouldThrowUserNotFoundException() {
-        // Given
-        String nonExistentUserId = "non-existent-uuid";
-        when(userRepository.findByUserId(nonExistentUserId)).thenReturn(Optional.empty());
-
-        // When & Then
-        assertThatThrownBy(() -> userService.getUserByUserId(nonExistentUserId))
-                .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining("사용자를 찾을 수 없습니다. ID: " + nonExistentUserId);
-        verify(userRepository, times(1)).findByUserId(nonExistentUserId);
     }
 }

@@ -3,6 +3,7 @@ package com.example.user_service.controller;
 import com.example.user_service.dto.request.UserCreateRequest;
 import com.example.user_service.dto.response.UserCreateResponse;
 import com.example.user_service.dto.request.UserUpdateRequest;
+import com.example.user_service.dto.response.UserUpdateResponse;
 import com.example.user_service.dto.response.UserProfileResponse;
 import com.example.user_service.dto.request.UserPasswordChangeRequest;
 import com.example.user_service.service.UserService;
@@ -26,32 +27,40 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id, @RequestHeader("X-User-Id") String authenticatedUserId) {
-        userService.deleteUser(id);
+    public ResponseEntity<Void> deleteUser(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") String authenticatedUserId) {
+
+        userService.deleteUser(id, authenticatedUserId);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateUser(@PathVariable Long id,
-                                           @Valid @RequestBody UserUpdateRequest userUpdateRequest,
-                                           @RequestHeader("X-User-Id") String authenticatedUserId) {
-        userService.updateUser(id, userUpdateRequest);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<UserUpdateResponse> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UserUpdateRequest userUpdateRequest,
+            @RequestHeader("X-User-Id") String authenticatedUserId) {
+
+        UserUpdateResponse response = userService.updateUser(id, userUpdateRequest, authenticatedUserId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable Long id,
-                                                              @RequestHeader("X-User-Id") String authenticatedUserId) {
-        UserProfileResponse response = userService.getUserProfile(id);
+    public ResponseEntity<UserProfileResponse> getUserProfile(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") String authenticatedUserId) {
+
+        UserProfileResponse response = userService.getUserProfile(id, authenticatedUserId);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/password")
-    public ResponseEntity<Void> changePassword(@PathVariable Long id,
-                                               @Valid @RequestBody UserPasswordChangeRequest request,
-                                               @RequestHeader("X-User-Id") String authenticatedUserId) {
-        userService.changePassword(id, request);
+    public ResponseEntity<Void> changePassword(
+            @PathVariable Long id,
+            @Valid @RequestBody UserPasswordChangeRequest request,
+            @RequestHeader("X-User-Id") String authenticatedUserId) {
+
+        userService.changePassword(id, request, authenticatedUserId);
         return ResponseEntity.ok().build();
     }
-
 }
