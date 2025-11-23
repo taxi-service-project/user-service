@@ -14,8 +14,11 @@ public record UserCreateRequest(
     @Size(min = 8, message = "Password must be at least 8 characters long")
     String password,
 
+    @NotBlank(message = "Name cannot be role")
+    String role,
+
     @NotBlank(message = "Name cannot be blank")
-    String name,
+    String username,
 
     @NotBlank(message = "Phone number cannot be blank")
     @Pattern(regexp = "^[0-9]{10,11}$", message = "Phone number must be 10 or 11 digits")

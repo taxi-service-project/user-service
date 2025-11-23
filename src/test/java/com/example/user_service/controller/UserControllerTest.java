@@ -46,6 +46,7 @@ class UserControllerTest {
         UserCreateRequest request = new UserCreateRequest(
                 "test@example.com",
                 "password123",
+                "user",
                 "Test User",
                 "01012345678"
         );

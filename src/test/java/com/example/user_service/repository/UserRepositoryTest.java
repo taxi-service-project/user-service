@@ -23,11 +23,12 @@ class UserRepositoryTest {
     void existsByEmail_whenUserExists_returnsTrue() {
         // Given
         User user = User.builder()
-                .email("test@example.com")
-                .password("password")
-                .name("Test User")
-                .phoneNumber("01012345678")
-                .build();
+                        .email("test@example.com")
+                        .password("password")
+                        .username("Test User")
+                        .role("USER")
+                        .phoneNumber("01012345678")
+                        .build();
         entityManager.persistAndFlush(user);
 
         // When
@@ -54,11 +55,12 @@ class UserRepositoryTest {
     void existsByPhoneNumber_whenUserExists_returnsTrue() {
         // Given
         User user = User.builder()
-                .email("test2@example.com")
-                .password("password")
-                .name("Test User 2")
-                .phoneNumber("01087654321")
-                .build();
+                        .email("test2@example.com")
+                        .password("password")
+                        .username("Test User 2")
+                        .role("USER")
+                        .phoneNumber("01087654321")
+                        .build();
         entityManager.persistAndFlush(user);
 
         // When

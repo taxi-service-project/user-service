@@ -4,5 +4,5 @@ public record UserCreateResponse(
     Long id,
     String userId,
     String email,
-    String name
+    String username
 ) {}

@@ -3,7 +3,10 @@ package com.example.user_service;
 import com.example.user_service.dto.request.UserCreateRequest;
 import com.example.user_service.dto.request.UserPasswordChangeRequest;
 import com.example.user_service.dto.request.UserUpdateRequest;
+import com.example.user_service.dto.response.InternalUserResponse;
 import com.example.user_service.dto.response.UserCreateResponse;
+import com.example.user_service.dto.response.UserUpdateResponse;
+import com.example.user_service.dto.response.UserProfileResponse;
 import com.example.user_service.entity.User;
 import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
@@ -11,8 +14,6 @@ import com.example.user_service.exception.InvalidPasswordException;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.UserRepository;
 import com.example.user_service.service.UserService;
-import com.example.user_service.dto.response.UserUpdateResponse;
-import com.example.user_service.dto.response.UserProfileResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,6 +41,8 @@ class UserServiceTest {
 
     private UserCreateRequest userCreateRequest;
     private User user;
+    private final String testUserId = "test-uuid-123";
+    private final Long testId = 1L;
 
     @BeforeEach
     void setUp() {
@@ -45,15 +50,20 @@ class UserServiceTest {
                 "test@example.com",
                 "password123",
                 "Test User",
+                "USER",
                 "01012345678"
         );
 
         user = User.builder()
-                .email("test@example.com")
-                .password("password123")
-                .name("Test User")
-                .phoneNumber("01012345678")
-                .build();
+                   .email("test@example.com")
+                   .password("password123")
+                   .username("Test User")
+                   .role("USER")
+                   .phoneNumber("01012345678")
+                   .build();
+
+        ReflectionTestUtils.setField(user, "id", testId);
+        ReflectionTestUtils.setField(user, "userId", testUserId);
     }
 
     @Test
@@ -69,8 +79,10 @@ class UserServiceTest {
 
         // Then
         assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(testId);
+        assertThat(response.userId()).isEqualTo(testUserId);
         assertThat(response.email()).isEqualTo(userCreateRequest.email());
-        assertThat(response.name()).isEqualTo(userCreateRequest.name());
+        assertThat(response.username()).isEqualTo(userCreateRequest.username());
         verify(userRepository, times(1)).existsByEmail(userCreateRequest.email());
         verify(userRepository, times(1)).existsByPhoneNumber(userCreateRequest.phoneNumber());
         verify(userRepository, times(1)).save(any(User.class));
@@ -143,24 +155,30 @@ class UserServiceTest {
     void updateUser_withValidInfo_shouldSucceed() {
         // Given
         Long userId = 1L;
-        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "010-9876-5432");
+        UserUpdateRequest request = new UserUpdateRequest("Updated Username", "010-9876-5432");
+
         User existingUser = User.builder()
-                .email("test@example.com")
-                .password("old_password")
-                .name("Old Name")
-                .phoneNumber("010-1234-5678")
-                .build();
+                                .email("test@example.com")
+                                .password("old_password")
+                                .username("Old Username")
+                                .role("USER")
+                                .phoneNumber("010-1234-5678")
+                                .build();
         ReflectionTestUtils.setField(existingUser, "id", userId);
+        ReflectionTestUtils.setField(existingUser, "userId", testUserId);
 
         User updatedUser = User.builder()
-                .email("test@example.com")
-                .password("old_password") // Password should not change
-                .name(request.name())
-                .phoneNumber(request.phoneNumber())
-                .build();
+                               .email("test@example.com")
+                               .password("old_password")
+                               .username(request.name())
+                               .role("USER")
+                               .phoneNumber(request.phoneNumber())
+                               .build();
         ReflectionTestUtils.setField(updatedUser, "id", userId);
+        ReflectionTestUtils.setField(updatedUser, "userId", testUserId);
 
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(existingUser));
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
         when(userRepository.save(any(User.class))).thenReturn(updatedUser);
 
         // When
@@ -169,7 +187,8 @@ class UserServiceTest {
         // Then
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(userId);
-        assertThat(response.name()).isEqualTo(request.name());
+        assertThat(response.userId()).isEqualTo(testUserId);
+        assertThat(response.username()).isEqualTo(request.name());
         assertThat(response.phoneNumber()).isEqualTo(request.phoneNumber());
         verify(userRepository, times(1)).findById(userId);
         verify(userRepository, times(1)).save(any(User.class));
@@ -180,9 +199,9 @@ class UserServiceTest {
     void updateUser_withNonExistentId_shouldThrowUserNotFoundException() {
         // Given
         Long userId = 1L;
-        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "010-9876-5432");
+        UserUpdateRequest request = new UserUpdateRequest("Updated Username", "010-9876-5432");
 
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.empty());
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> userService.updateUser(userId, request))
@@ -197,15 +216,8 @@ class UserServiceTest {
     void getUserProfile_withValidId_shouldReturnUserProfileResponse() {
         // Given
         Long userId = 1L;
-        User userWithId = User.builder()
-                .email("test@example.com")
-                .password("password123")
-                .name("Test User")
-                .phoneNumber("01012345678")
-                .build();
-        ReflectionTestUtils.setField(userWithId, "id", userId);
 
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(userWithId));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // When
         UserProfileResponse response = userService.getUserProfile(userId);
@@ -213,9 +225,10 @@ class UserServiceTest {
         // Then
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(userId);
-        assertThat(response.email()).isEqualTo(userWithId.getEmail());
-        assertThat(response.name()).isEqualTo(userWithId.getName());
-        assertThat(response.phoneNumber()).isEqualTo(userWithId.getPhoneNumber());
+        assertThat(response.userId()).isEqualTo(testUserId);
+        assertThat(response.email()).isEqualTo(user.getEmail());
+        assertThat(response.username()).isEqualTo(user.getUsername());
+        assertThat(response.phoneNumber()).isEqualTo(user.getPhoneNumber());
         verify(userRepository, times(1)).findById(userId);
     }
 
@@ -224,7 +237,7 @@ class UserServiceTest {
     void getUserProfile_withNonExistentId_shouldThrowUserNotFoundException() {
         // Given
         Long userId = 1L;
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.empty());
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> userService.getUserProfile(userId))
@@ -243,15 +256,18 @@ class UserServiceTest {
         UserPasswordChangeRequest request = new UserPasswordChangeRequest(oldPassword, newPassword);
 
         User existingUser = User.builder()
-                .email("test@example.com")
-                .password(oldPassword) // Stored in plain text as per user instruction
-                .name("Test User")
-                .phoneNumber("010-1234-5678")
-                .build();
+                                .email("test@example.com")
+                                .password(oldPassword)
+                                .username("Test User")
+                                .role("USER")
+                                .phoneNumber("010-1234-5678")
+                                .build();
         ReflectionTestUtils.setField(existingUser, "id", userId);
+        ReflectionTestUtils.setField(existingUser, "userId", testUserId);
 
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser); // Return the same user after update
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenReturn(existingUser);
 
         // When
         userService.changePassword(userId, request);
@@ -269,7 +285,7 @@ class UserServiceTest {
         Long userId = 1L;
         UserPasswordChangeRequest request = new UserPasswordChangeRequest("old_password", "new_password");
 
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.empty());
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> userService.changePassword(userId, request))
@@ -290,14 +306,17 @@ class UserServiceTest {
         UserPasswordChangeRequest request = new UserPasswordChangeRequest(wrongPassword, newPassword);
 
         User existingUser = User.builder()
-                .email("test@example.com")
-                .password(oldPassword)
-                .name("Test User")
-                .phoneNumber("010-1234-5678")
-                .build();
+                                .email("test@example.com")
+                                .password(oldPassword)
+                                .username("Test User")
+                                .role("USER")
+                                .phoneNumber("010-1234-5678")
+                                .build();
         ReflectionTestUtils.setField(existingUser, "id", userId);
+        ReflectionTestUtils.setField(existingUser, "userId", testUserId);
 
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(existingUser));
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
 
         // When & Then
         assertThatThrownBy(() -> userService.changePassword(userId, request))
@@ -305,5 +324,35 @@ class UserServiceTest {
                 .hasMessageContaining("Current password does not match.");
         verify(userRepository, times(1)).findById(userId);
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("유효한 userId로 조회 시 InternalUserResponse를 반환하며 성공한다")
+    void getUserByUserId_withValidUserId_shouldReturnInternalUserResponse() {
+        // Given
+        when(userRepository.findByUserId(testUserId)).thenReturn(Optional.of(user));
+
+        // When
+        InternalUserResponse response = userService.getUserByUserId(testUserId);
+
+        // Then
+        assertThat(response).isNotNull();
+        assertThat(response.userId()).isEqualTo(testUserId);
+        assertThat(response.username()).isEqualTo(user.getUsername());
+        verify(userRepository, times(1)).findByUserId(testUserId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 userId로 조회 시 UserNotFoundException이 발생한다")
+    void getUserByUserId_withNonExistentUserId_shouldThrowUserNotFoundException() {
+        // Given
+        String nonExistentUserId = "non-existent-uuid";
+        when(userRepository.findByUserId(nonExistentUserId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userService.getUserByUserId(nonExistentUserId))
+                .isInstanceOf(UserNotFoundException.class)
+                .hasMessageContaining("사용자를 찾을 수 없습니다. ID: " + nonExistentUserId);
+        verify(userRepository, times(1)).findByUserId(nonExistentUserId);
     }
 }

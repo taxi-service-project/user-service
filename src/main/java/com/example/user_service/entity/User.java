@@ -23,6 +23,12 @@ public class User {
     @Column(nullable = false, updatable = false, unique = true)
     private String userId;
 
+    @Column(nullable = false, unique = true, length = 20)
+    private String username;
+
+    @Column(nullable = false)
+    private String role;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PaymentMethod> paymentMethods = new ArrayList<>();
 
@@ -32,23 +38,21 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false, length = 50)
-    private String name;
-
     @Column(name = "phone_number", nullable = false, unique = true, length = 20)
     private String phoneNumber;
 
     @Builder
-    public User(String email, String password, String name, String phoneNumber) {
+    public User(String email, String username, String role, String password, String phoneNumber) {
         this.userId = UUID.randomUUID().toString();
+        this.username = username;
+        this.role = role;
         this.email = email;
         this.password = password;
-        this.name = name;
         this.phoneNumber = phoneNumber;
     }
 
-    public void update(String name, String phoneNumber) {
-        this.name = name;
+    public void update(String username, String phoneNumber) {
+        this.username = username;
         this.phoneNumber = phoneNumber;
     }
 

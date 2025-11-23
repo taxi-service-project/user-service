@@ -3,9 +3,9 @@ import com.example.user_service.entity.User;
 
 public record InternalUserResponse(
         String userId,
-        String name
+        String username
 ) {
     public static InternalUserResponse fromEntity(User user) {
-        return new InternalUserResponse(user.getUserId(), user.getName());
+        return new InternalUserResponse(user.getUserId(), user.getUsername());
     }
 }

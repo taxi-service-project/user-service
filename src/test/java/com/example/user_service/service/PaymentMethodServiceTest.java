@@ -17,7 +17,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.Collections;
 import java.util.Optional;
 import java.util.List;
 import java.util.Arrays;
@@ -42,16 +41,21 @@ class PaymentMethodServiceTest {
     private PaymentMethodService paymentMethodService;
 
     private User testUser;
+    private final Long testId = 1L;
+    private final String testUserUuid = "test-user-uuid-1L";
 
     @BeforeEach
     void setUp() {
         testUser = User.builder()
-                .email("test@example.com")
-                .password("password123")
-                .name("Test User")
-                .phoneNumber("01012345678")
-                .build();
-        ReflectionTestUtils.setField(testUser, "id", 1L);
+                       .email("test@example.com")
+                       .password("password123")
+                       .username("Test User")
+                       .role("USER")
+                       .phoneNumber("01012345678")
+                       .build();
+
+        ReflectionTestUtils.setField(testUser, "id", testId);
+        ReflectionTestUtils.setField(testUser, "userId", testUserUuid);
     }
 
     @Test
@@ -59,13 +63,13 @@ class PaymentMethodServiceTest {
     void registerPaymentMethod_firstPaymentMethod_setsAsDefault() {
         // Given
         PaymentMethodRegisterRequest request = PaymentMethodRegisterRequest.builder()
-                .cardNumber("4111-1111-1111-1111")
-                .expiryDate("12/25")
-                .cvc("123")
-                .build();
+                                                                           .cardNumber("4111-1111-1111-1111")
+                                                                           .expiryDate("12/25")
+                                                                           .cvc("123")
+                                                                           .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(paymentMethodRepository.existsByUserId(1L)).thenReturn(false);
+        when(userRepository.findById(testId)).thenReturn(Optional.of(testUser));
+        when(paymentMethodRepository.existsByUserId(testId)).thenReturn(false);
         when(paymentMethodRepository.save(any(PaymentMethod.class))).thenAnswer(invocation -> {
             PaymentMethod pm = invocation.getArgument(0);
             ReflectionTestUtils.setField(pm, "id", 1L);
@@ -73,7 +77,7 @@ class PaymentMethodServiceTest {
         });
 
         // When
-        PaymentMethodRegisterResponse response = paymentMethodService.registerPaymentMethod(1L, request);
+        PaymentMethodRegisterResponse response = paymentMethodService.registerPaymentMethod(testId, request);
 
         // Then
         assertThat(response).isNotNull();
@@ -88,13 +92,13 @@ class PaymentMethodServiceTest {
     void registerPaymentMethod_existingPaymentMethods_doesNotSetAsDefault() {
         // Given
         PaymentMethodRegisterRequest request = PaymentMethodRegisterRequest.builder()
-                .cardNumber("5111-1111-1111-1111")
-                .expiryDate("12/25")
-                .cvc("123")
-                .build();
+                                                                           .cardNumber("5111-1111-1111-1111")
+                                                                           .expiryDate("12/25")
+                                                                           .cvc("123")
+                                                                           .build();
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(paymentMethodRepository.existsByUserId(1L)).thenReturn(true);
+        when(userRepository.findById(testId)).thenReturn(Optional.of(testUser));
+        when(paymentMethodRepository.existsByUserId(testId)).thenReturn(true);
         when(paymentMethodRepository.save(any(PaymentMethod.class))).thenAnswer(invocation -> {
             PaymentMethod pm = invocation.getArgument(0);
             ReflectionTestUtils.setField(pm, "id", 2L);
@@ -102,7 +106,7 @@ class PaymentMethodServiceTest {
         });
 
         // When
-        PaymentMethodRegisterResponse response = paymentMethodService.registerPaymentMethod(1L, request);
+        PaymentMethodRegisterResponse response = paymentMethodService.registerPaymentMethod(testId, request);
 
         // Then
         assertThat(response).isNotNull();
@@ -116,16 +120,17 @@ class PaymentMethodServiceTest {
     @DisplayName("존재하지 않는 사용자 ID로 결제 수단 등록 시 UserNotFoundException이 발생한다")
     void registerPaymentMethod_userNotFound_throwsUserNotFoundException() {
         // Given
+        Long nonExistentId = 999L;
         PaymentMethodRegisterRequest request = PaymentMethodRegisterRequest.builder()
-                .cardNumber("4111-1111-1111-1111")
-                .expiryDate("12/25")
-                .cvc("123")
-                .build();
+                                                                           .cardNumber("4111-1111-1111-1111")
+                                                                           .expiryDate("12/25")
+                                                                           .cvc("123")
+                                                                           .build();
 
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThatThrownBy(() -> paymentMethodService.registerPaymentMethod(999L, request))
+        assertThatThrownBy(() -> paymentMethodService.registerPaymentMethod(nonExistentId, request))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessageContaining("User not found with ID: 999");
 
@@ -136,7 +141,7 @@ class PaymentMethodServiceTest {
     @DisplayName("유효한 사용자 ID로 결제 수단 목록 조회 시 목록을 반환한다")
     void getPaymentMethods_withValidUserId_returnsListOfPaymentMethods() {
         // Given
-        Long userId = 1L;
+        Long userId = testId;
         PaymentMethod pm1 = PaymentMethod.builder().user(testUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
         PaymentMethod pm2 = PaymentMethod.builder().user(testUser).billingKey("dummy-2").cardIssuer("MasterCard").cardNumberMasked("5678-XXXX-XXXX-2222").isDefault(false).build();
         List<PaymentMethod> paymentMethods = Arrays.asList(pm1, pm2);
@@ -173,7 +178,7 @@ class PaymentMethodServiceTest {
     @DisplayName("유효한 사용자 ID와 결제 수단 ID로 결제 수단 삭제 시 성공한다")
     void deletePaymentMethod_withValidIds_success() {
         // Given
-        Long userId = 1L;
+        Long userId = testId;
         Long methodId = 1L;
         PaymentMethod paymentMethod = PaymentMethod.builder().user(testUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
         ReflectionTestUtils.setField(paymentMethod, "id", methodId);
@@ -193,7 +198,7 @@ class PaymentMethodServiceTest {
     @DisplayName("존재하지 않는 결제 수단 ID로 삭제 시 PaymentMethodNotFoundException이 발생한다")
     void deletePaymentMethod_withNonExistentMethodId_throwsPaymentMethodNotFoundException() {
         // Given
-        Long userId = 1L;
+        Long userId = testId;
         Long methodId = 999L;
 
         when(paymentMethodRepository.findById(methodId)).thenReturn(Optional.empty());
@@ -210,10 +215,18 @@ class PaymentMethodServiceTest {
     @DisplayName("사용자 ID와 결제 수단 ID가 일치하지 않을 때 삭제 시 PaymentMethodNotFoundException이 발생한다")
     void deletePaymentMethod_withMismatchedUserId_throwsPaymentMethodNotFoundException() {
         // Given
-        Long userId = 1L;
+        Long userId = testId;
         Long methodId = 1L;
-        User anotherUser = User.builder().email("another@example.com").password("pass").name("Another").phoneNumber("010").build();
+
+        User anotherUser = User.builder()
+                               .email("another@example.com")
+                               .password("pass")
+                               .username("Another")
+                               .role("USER")
+                               .phoneNumber("010")
+                               .build();
         ReflectionTestUtils.setField(anotherUser, "id", 2L);
+
         PaymentMethod paymentMethod = PaymentMethod.builder().user(anotherUser).billingKey("dummy-1").cardIssuer("Visa").cardNumberMasked("1234-XXXX-XXXX-1111").isDefault(true).build();
         ReflectionTestUtils.setField(paymentMethod, "id", methodId);
 
@@ -231,7 +244,7 @@ class PaymentMethodServiceTest {
     @DisplayName("유효한 사용자 ID와 결제 수단 ID로 기본 결제 수단 설정 시 성공한다")
     void setDefaultPaymentMethod_withValidIds_success() {
         // Given
-        Long userId = 1L;
+        Long userId = testId;
         Long methodIdToSetDefault = 2L;
 
         PaymentMethod targetMethod = PaymentMethod.builder()
@@ -252,17 +265,17 @@ class PaymentMethodServiceTest {
         paymentMethodService.setDefaultPaymentMethod(userId, methodIdToSetDefault);
 
         // Then
-        assertThat(targetMethod.isDefault()).isTrue(); // 타겟이 true로 변했는지 확인
+        assertThat(targetMethod.isDefault()).isTrue();
 
-        verify(paymentMethodRepository, times(2)).findById(methodIdToSetDefault); // 검증용 1번 + 업데이트용 1번
         verify(paymentMethodRepository, times(1)).resetDefaultPaymentMethod(userId);
+        verify(paymentMethodRepository, times(1)).save(targetMethod);
     }
 
     @Test
     @DisplayName("기본 결제 수단 설정 시 존재하지 않는 결제 수단이면 예외 발생")
     void setDefaultPaymentMethod_notFound_throwsException() {
         // Given
-        Long userId = 1L;
+        Long userId = testId;
         Long methodId = 999L;
 
         when(paymentMethodRepository.findById(methodId)).thenReturn(Optional.empty());
@@ -278,11 +291,17 @@ class PaymentMethodServiceTest {
     @DisplayName("기본 결제 수단 설정 시 다른 사람의 결제 수단이면 예외 발생")
     void setDefaultPaymentMethod_notOwner_throwsException() {
         // Given
-        Long userId = 1L;
+        Long userId = testId;
         Long methodId = 2L;
 
-        User otherUser = User.builder().build();
-        ReflectionTestUtils.setField(otherUser, "id", 2L); // 다른 유저
+        User otherUser = User.builder()
+                             .email("other@example.com")
+                             .password("pass")
+                             .username("Other")
+                             .role("USER")
+                             .phoneNumber("010-0000-0000")
+                             .build();
+        ReflectionTestUtils.setField(otherUser, "id", 2L);
 
         PaymentMethod otherMethod = PaymentMethod.builder().user(otherUser).build();
         ReflectionTestUtils.setField(otherMethod, "id", methodId);
@@ -291,7 +310,7 @@ class PaymentMethodServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> paymentMethodService.setDefaultPaymentMethod(userId, methodId))
-                .isInstanceOf(PaymentMethodNotFoundException.class); // 서비스 코드에서 filter로 거름
+                .isInstanceOf(PaymentMethodNotFoundException.class);
 
         verify(paymentMethodRepository, never()).resetDefaultPaymentMethod(anyLong());
     }
@@ -300,7 +319,7 @@ class PaymentMethodServiceTest {
     @DisplayName("기본 결제 수단 조회 시 Fetch Join 결과를 사용하여 반환한다")
     void getDefaultPaymentMethod_success() {
         // Given
-        String userUuid = "user-uuid-123";
+        String userUuid = testUserUuid;
         PaymentMethod defaultMethod = PaymentMethod.builder()
                                                    .user(testUser)
                                                    .billingKey("billing-key")
@@ -309,6 +328,7 @@ class PaymentMethodServiceTest {
                                                    .cardNumberMasked("1234-****-5678")
                                                    .isDefault(true)
                                                    .build();
+        ReflectionTestUtils.setField(defaultMethod, "id", 1L);
         ReflectionTestUtils.setField(defaultMethod, "paymentMethodId", "pm-123");
 
         when(paymentMethodRepository.findByUserUserIdAndIsDefaultTrue(userUuid))
@@ -322,6 +342,7 @@ class PaymentMethodServiceTest {
         assertThat(response.userId()).isEqualTo(userUuid);
         assertThat(response.billingKey()).isEqualTo("billing-key");
 
+        verify(paymentMethodRepository, times(1)).findByUserUserIdAndIsDefaultTrue(userUuid);
         verify(userRepository, never()).findById(anyLong());
     }
 }

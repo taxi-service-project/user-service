@@ -4,7 +4,7 @@ public record UserProfileResponse(
         Long id,
         String userId,
         String email,
-        String name,
+        String username,
         String phoneNumber
 ) {
 }
