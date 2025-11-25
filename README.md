@@ -39,3 +39,10 @@
 * **RTR & Cookie Security:** Refresh Token을 `HttpOnly`, `SameSite=Strict` 쿠키에 저장하고 재발급 시 교체(Rotate)하여 보안 강화.
 * **IDOR 방어:** `validateOwner` 로직을 통해 헤더의 ID와 대상 ID를 대조하여 권한 도용 차단.
 * **JPA 최적화:** `Fetch Join`으로 N+1 문제 해결 및 벌크 연산 최적화.
+
+
+
+----------
+
+## 아키텍쳐
+<img width="2324" height="1686" alt="Image" src="https://github.com/user-attachments/assets/81a25ff9-ee02-4996-80d3-f9217c3b7750" />
