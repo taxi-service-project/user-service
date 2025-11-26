@@ -1,4 +1,4 @@
-package com.example.user_service;
+package com.example.user_service.service;
 
 import com.example.user_service.dto.request.UserCreateRequest;
 import com.example.user_service.dto.request.UserPasswordChangeRequest;
@@ -12,7 +12,6 @@ import com.example.user_service.exception.DuplicateEmailException;
 import com.example.user_service.exception.DuplicatePhoneNumberException;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.UserRepository;
-import com.example.user_service.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,8 +52,8 @@ class UserServiceTest {
         userCreateRequest = new UserCreateRequest(
                 "test@example.com",
                 "password123",
-                "Test User",
                 "USER",
+                "Test User",
                 "01012345678"
         );
 

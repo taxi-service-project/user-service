@@ -152,7 +152,7 @@ public class PaymentMethodService {
         User user = paymentMethod.getUser();
         log.info("사용자 ID: {} 의 기본 결제 수단 조회 성공. 결제 수단 ID: {}", userId, paymentMethod.getId());
 
-        return new UserInfoForPaymentResponse(user.getUserId(), user.getName(), user.getEmail(), paymentMethod.getPaymentMethodId(), paymentMethod.getBillingKey());
+        return new UserInfoForPaymentResponse(user.getUserId(), user.getUsername(), user.getEmail(), paymentMethod.getPaymentMethodId(), paymentMethod.getBillingKey());
     }
 
     private String inferCardIssuer(String cardNumber) {
