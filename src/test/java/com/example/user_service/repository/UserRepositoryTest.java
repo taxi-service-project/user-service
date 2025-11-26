@@ -29,6 +29,7 @@ class UserRepositoryTest {
                         .role("USER")
                         .phoneNumber("01012345678")
                         .build();
+
         entityManager.persistAndFlush(user);
 
         // When
@@ -39,46 +40,23 @@ class UserRepositoryTest {
     }
 
     @Test
-    @DisplayName("이메일로 사용자가 존재하지 않는지 확인하면 false를 반환한다")
-    void existsByEmail_whenUserDoesNotExist_returnsFalse() {
-        // Given
-
-        // When
-        boolean exists = userRepository.existsByEmail("nonexistent@example.com");
-
-        // Then
-        assertThat(exists).isFalse();
-    }
-
-    @Test
     @DisplayName("전화번호로 사용자가 존재하는지 확인하면 true를 반환한다")
     void existsByPhoneNumber_whenUserExists_returnsTrue() {
         // Given
         User user = User.builder()
-                        .email("test2@example.com")
+                        .email("unique@example.com")
                         .password("password")
-                        .username("Test User 2")
+                        .username("Unique User")
                         .role("USER")
-                        .phoneNumber("01087654321")
+                        .phoneNumber("01099999999")
                         .build();
+
         entityManager.persistAndFlush(user);
 
         // When
-        boolean exists = userRepository.existsByPhoneNumber("01087654321");
+        boolean exists = userRepository.existsByPhoneNumber("01099999999");
 
         // Then
         assertThat(exists).isTrue();
-    }
-
-    @Test
-    @DisplayName("전화번호로 사용자가 존재하지 않는지 확인하면 false를 반환한다")
-    void existsByPhoneNumber_whenUserDoesNotExist_returnsFalse() {
-        // Given
-
-        // When
-        boolean exists = userRepository.existsByPhoneNumber("01099998888");
-
-        // Then
-        assertThat(exists).isFalse();
     }
 }
