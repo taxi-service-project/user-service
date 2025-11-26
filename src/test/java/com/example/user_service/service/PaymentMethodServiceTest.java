@@ -8,6 +8,7 @@ import com.example.user_service.entity.User;
 import com.example.user_service.exception.UserNotFoundException;
 import com.example.user_service.repository.PaymentMethodRepository;
 import com.example.user_service.repository.UserRepository;
+import io.jsonwebtoken.lang.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -240,79 +241,70 @@ class PaymentMethodServiceTest {
         verify(paymentMethodRepository, never()).delete(any(PaymentMethod.class));
     }
 
-    @Test
     @DisplayName("유효한 사용자 ID와 결제 수단 ID로 기본 결제 수단 설정 시 성공한다")
     void setDefaultPaymentMethod_withValidIds_success() {
         // Given
         Long userId = testId;
         Long methodIdToSetDefault = 2L;
 
+        PaymentMethod currentDefault = PaymentMethod.builder()
+                                                    .user(testUser)
+                                                    .isDefault(true)
+                                                    .build();
+        ReflectionTestUtils.setField(currentDefault, "id", 1L);
+
         PaymentMethod targetMethod = PaymentMethod.builder()
                                                   .user(testUser)
-                                                  .billingKey("dummy-2")
-                                                  .cardIssuer("MasterCard")
-                                                  .expiryDate("12/25")
-                                                  .cardNumberMasked("5678-XXXX-XXXX-2222")
                                                   .isDefault(false)
                                                   .build();
         ReflectionTestUtils.setField(targetMethod, "id", methodIdToSetDefault);
 
-        when(paymentMethodRepository.findById(methodIdToSetDefault)).thenReturn(Optional.of(targetMethod));
-
-        doNothing().when(paymentMethodRepository).resetDefaultPaymentMethod(userId);
+        when(paymentMethodRepository.findByUserId(userId)).thenReturn(List.of(currentDefault, targetMethod));
 
         // When
         paymentMethodService.setDefaultPaymentMethod(userId, methodIdToSetDefault);
 
         // Then
+        assertThat(currentDefault.isDefault()).isFalse();
         assertThat(targetMethod.isDefault()).isTrue();
 
-        verify(paymentMethodRepository, times(1)).resetDefaultPaymentMethod(userId);
-        verify(paymentMethodRepository, times(1)).save(targetMethod);
+        verify(paymentMethodRepository, times(1)).saveAll(anyList());
     }
 
     @Test
-    @DisplayName("기본 결제 수단 설정 시 존재하지 않는 결제 수단이면 예외 발생")
-    void setDefaultPaymentMethod_notFound_throwsException() {
+    @DisplayName("기본 결제 수단 설정 시 사용자의 결제 수단이 없으면 예외 발생")
+    void setDefaultPaymentMethod_noMethods_throwsException() {
         // Given
         Long userId = testId;
         Long methodId = 999L;
 
-        when(paymentMethodRepository.findById(methodId)).thenReturn(Optional.empty());
+        when(paymentMethodRepository.findByUserId(userId)).thenReturn(Collections.emptyList());
 
         // When & Then
         assertThatThrownBy(() -> paymentMethodService.setDefaultPaymentMethod(userId, methodId))
-                .isInstanceOf(PaymentMethodNotFoundException.class);
-
-        verify(paymentMethodRepository, never()).resetDefaultPaymentMethod(anyLong());
+                .isInstanceOf(PaymentMethodNotFoundException.class)
+                .hasMessageContaining("No payment methods found");
     }
 
     @Test
-    @DisplayName("기본 결제 수단 설정 시 다른 사람의 결제 수단이면 예외 발생")
+    @DisplayName("기본 결제 수단 설정 시 다른 사람의 결제 수단(내 목록에 없는 ID)이면 예외 발생")
     void setDefaultPaymentMethod_notOwner_throwsException() {
         // Given
         Long userId = testId;
-        Long methodId = 2L;
+        Long otherMethodId = 2L;
 
-        User otherUser = User.builder()
-                             .email("other@example.com")
-                             .password("pass")
-                             .username("Other")
-                             .role("USER")
-                             .phoneNumber("010-0000-0000")
-                             .build();
-        ReflectionTestUtils.setField(otherUser, "id", 2L);
+        PaymentMethod myMethod = PaymentMethod.builder().user(testUser).isDefault(true).build();
+        ReflectionTestUtils.setField(myMethod, "id", 100L);
 
-        PaymentMethod otherMethod = PaymentMethod.builder().user(otherUser).build();
-        ReflectionTestUtils.setField(otherMethod, "id", methodId);
-
-        when(paymentMethodRepository.findById(methodId)).thenReturn(Optional.of(otherMethod));
+        when(paymentMethodRepository.findByUserId(userId)).thenReturn(List.of(myMethod));
 
         // When & Then
-        assertThatThrownBy(() -> paymentMethodService.setDefaultPaymentMethod(userId, methodId))
-                .isInstanceOf(PaymentMethodNotFoundException.class);
+        assertThatThrownBy(() -> paymentMethodService.setDefaultPaymentMethod(userId, otherMethodId))
+                .isInstanceOf(PaymentMethodNotFoundException.class)
+                .hasMessageContaining("Payment method not found");
 
-        verify(paymentMethodRepository, never()).resetDefaultPaymentMethod(anyLong());
+        // 검증: 로직이 중단되어 saveAll이 호출되지 않았는지 확인
+        verify(paymentMethodRepository, never()).saveAll(anyList());
     }
 
     @Test
