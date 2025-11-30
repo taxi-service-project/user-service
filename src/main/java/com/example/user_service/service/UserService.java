@@ -29,25 +29,12 @@ public class UserService {
 
     @Transactional
     public UserCreateResponse createUser(UserCreateRequest request) {
-        log.info("회원가입 요청: email={}", request.email());
+        return register(request, "ROLE_USER");
+    }
 
-        if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateEmailException("Email already exists: " + request.email());
-        }
-        if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
-            throw new DuplicatePhoneNumberException("Phone number already exists: " + request.phoneNumber());
-        }
-
-        User newUser = User.builder()
-                           .email(request.email())
-                           .username(request.username())
-                           .role(request.role())
-                           .password(bCryptPasswordEncoder.encode(request.password()))
-                           .phoneNumber(request.phoneNumber())
-                           .build();
-
-        User savedUser = userRepository.save(newUser);
-        return new UserCreateResponse(savedUser.getId(), savedUser.getUserId(), savedUser.getEmail(), savedUser.getUsername());
+    @Transactional
+    public UserCreateResponse createInternalUser(UserCreateRequest request) {
+        return register(request, "ROLE_DRIVER");
     }
 
     @Transactional
@@ -112,5 +99,29 @@ public class UserService {
             log.warn("권한 없는 접근 시도! Target PK: {}, Requester UUID: {}", targetUser.getId(), authenticatedUserId);
             throw new AccessDeniedException("본인의 정보만 수정/삭제할 수 있습니다.");
         }
+    }
+
+    private UserCreateResponse register(UserCreateRequest request, String role) {
+        log.info("회원가입 요청: email={}, role={}", request.email(), role);
+
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateEmailException("Email already exists: " + request.email());
+        }
+        if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
+            throw new DuplicatePhoneNumberException("Phone number already exists: " + request.phoneNumber());
+        }
+
+        User newUser = User.builder()
+                           .email(request.email())
+                           .username(request.username())
+                           .role(role)
+                           .password(bCryptPasswordEncoder.encode(request.password()))
+                           .phoneNumber(request.phoneNumber())
+                           .build();
+
+        User savedUser = userRepository.save(newUser);
+        log.info("사용자 생성 성공. ID: {}, Role: {}", savedUser.getId(), role);
+
+        return new UserCreateResponse(savedUser.getId(), savedUser.getUserId(), savedUser.getEmail(), savedUser.getUsername());
     }
 }

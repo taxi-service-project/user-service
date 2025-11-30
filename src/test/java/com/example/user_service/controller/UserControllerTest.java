@@ -44,7 +44,7 @@ class UserControllerTest {
     void createUser_withValidUserInfo_returns201Created() throws Exception {
         // Given
         UserCreateRequest request = new UserCreateRequest(
-                "test@example.com", "password123", "user", "Test User", "01012345678"
+                "test@example.com", "password123", "Test User", "01012345678"
         );
         UserCreateResponse response = new UserCreateResponse(1L, TEST_UUID, "test@example.com", "Test User");
 

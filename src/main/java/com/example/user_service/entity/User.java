@@ -44,9 +44,9 @@ public class User {
     @Builder
     public User(String email, String username, String role, String password, String phoneNumber) {
         this.userId = UUID.randomUUID().toString();
+        this.email = email;
         this.username = username;
         this.role = role;
-        this.email = email;
         this.password = password;
         this.phoneNumber = phoneNumber;
     }

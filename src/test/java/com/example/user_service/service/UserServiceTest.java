@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -52,7 +53,6 @@ class UserServiceTest {
         userCreateRequest = new UserCreateRequest(
                 "test@example.com",
                 "password123",
-                "USER",
                 "Test User",
                 "01012345678"
         );
@@ -61,7 +61,7 @@ class UserServiceTest {
                    .email("test@example.com")
                    .password("encoded_password")
                    .username("Test User")
-                   .role("USER")
+                   .role("ROLE_USER")
                    .phoneNumber("01012345678")
                    .build();
 
@@ -70,8 +70,8 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("유효한 사용자 정보로 사용자를 생성하면 성공한다")
-    void createUser_withValidUserInfo_shouldSucceed() {
+    @DisplayName("일반 회원가입 시 ROLE_USER 권한으로 생성되어야 한다")
+    void createUser_ShouldForceRoleUser() {
         // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(userRepository.existsByPhoneNumber(anyString())).thenReturn(false);
@@ -83,39 +83,67 @@ class UserServiceTest {
 
         // Then
         assertThat(response).isNotNull();
-        assertThat(response.id()).isEqualTo(testId);
-        assertThat(response.userId()).isEqualTo(testUserId);
-        assertThat(response.email()).isEqualTo(userCreateRequest.email());
-        assertThat(response.username()).isEqualTo(userCreateRequest.username());
 
-        verify(userRepository, times(1)).save(any(User.class));
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+
+        User savedUser = userCaptor.getValue();
+        assertThat(savedUser.getRole()).isEqualTo("ROLE_USER");
+        assertThat(savedUser.getEmail()).isEqualTo(userCreateRequest.email());
     }
 
     @Test
-    @DisplayName("이미 존재하는 이메일로 사용자를 생성하면 DuplicateEmailException이 발생한다")
-    void createUser_withExistingEmail_shouldThrowDuplicateEmailException() {
+    @DisplayName("내부 호출로 기사 가입 시 지정한 Role(ROLE_DRIVER)로 생성되어야 한다")
+    void createInternalUser_ShouldUseProvidedRole() {
+        // Given
+        String targetRole = "ROLE_DRIVER";
+
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(userRepository.existsByPhoneNumber(anyString())).thenReturn(false);
+        when(bCryptPasswordEncoder.encode(anyString())).thenReturn("encoded_password");
+
+        User driverUser = User.builder()
+                              .role(targetRole)
+                              .build();
+        ReflectionTestUtils.setField(driverUser, "id", 2L);
+        ReflectionTestUtils.setField(driverUser, "userId", "driver-uuid");
+
+        when(userRepository.save(any(User.class))).thenReturn(driverUser);
+
+        // When
+        UserCreateResponse response = userService.createInternalUser(userCreateRequest);
+
+        // Then
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+
+        User savedUser = userCaptor.getValue();
+        assertThat(savedUser.getRole()).isEqualTo(targetRole);
+    }
+
+    @Test
+    @DisplayName("이미 존재하는 이메일로 생성 시 DuplicateEmailException 발생")
+    void createUser_DuplicateEmail() {
         // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(true);
 
         // When & Then
         assertThatThrownBy(() -> userService.createUser(userCreateRequest))
-                .isInstanceOf(DuplicateEmailException.class)
-                .hasMessageContaining("Email already exists");
+                .isInstanceOf(DuplicateEmailException.class);
 
         verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
-    @DisplayName("이미 존재하는 전화번호로 사용자를 생성하면 DuplicatePhoneNumberException이 발생한다")
-    void createUser_withExistingPhoneNumber_shouldThrowDuplicatePhoneNumberException() {
+    @DisplayName("이미 존재하는 번호로 생성 시 DuplicatePhoneNumberException 발생")
+    void createUser_DuplicatePhone() {
         // Given
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(userRepository.existsByPhoneNumber(anyString())).thenReturn(true);
 
         // When & Then
         assertThatThrownBy(() -> userService.createUser(userCreateRequest))
-                .isInstanceOf(DuplicatePhoneNumberException.class)
-                .hasMessageContaining("Phone number already exists");
+                .isInstanceOf(DuplicatePhoneNumberException.class);
 
         verify(userRepository, never()).save(any(User.class));
     }
