@@ -70,7 +70,7 @@ public class ReissueController {
         addRefreshEntity(userId, newRefresh, 86400000L);
 
         // 5. 응답 설정
-        response.setHeader("access", newAccess);
+        response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + newAccess);
 
         // 재발급된 토큰도 SameSite 적용
         ResponseCookie cookie = ResponseCookie.from("refresh", newRefresh)

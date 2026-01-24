@@ -57,8 +57,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // 2. Refresh 토큰 DB 저장
         addRefreshEntity(userId, refresh, 86400000L);
 
-        // 3. 응답 설정 (Header + Cookie)
-        response.setHeader("access", access);
+        // 3. 응답 설정
+        response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + access);
 
         // SameSite 설정이 적용된 쿠키 생성
         ResponseCookie cookie = createRefreshCookie(refresh);
