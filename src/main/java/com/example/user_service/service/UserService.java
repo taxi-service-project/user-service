@@ -33,6 +33,11 @@ public class UserService {
     }
 
     @Transactional
+    public UserCreateResponse createAdmin(UserCreateRequest request) {
+        return register(request, "ROLE_ADMIN");
+    }
+
+    @Transactional
     public UserCreateResponse createInternalUser(UserCreateRequest request) {
         return register(request, "ROLE_DRIVER");
     }

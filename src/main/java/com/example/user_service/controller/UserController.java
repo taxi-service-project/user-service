@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,6 +24,19 @@ public class UserController {
     @PostMapping
     public ResponseEntity<UserCreateResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
         UserCreateResponse response = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/admin-register")
+    public ResponseEntity<UserCreateResponse> createAdmin(
+            @Valid @RequestBody UserCreateRequest request,
+            @RequestHeader(value = "X-Role", required = false) String role) {
+
+        if (!"ROLE_ADMIN".equals(role)) {
+            throw new AccessDeniedException("관리자만 관리자 계정을 생성할 수 있습니다.");
+        }
+
+        UserCreateResponse response = userService.createAdmin(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
