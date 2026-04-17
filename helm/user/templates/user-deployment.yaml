@@ -46,6 +46,8 @@ spec:
               value: {{ .Values.spring.zipkin.endpoint | quote }}
             - name: EUREKA_DEFAULT_ZONE
               value: {{ .Values.spring.eureka.url | quote }}
+            - name: CORS_ALLOWED_ORIGINS
+              value: { { .Values.cors.origins | quote } }
 
           ports:
             - containerPort: {{ .Values.spring.service.user.port }}

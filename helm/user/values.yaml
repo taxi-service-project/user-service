@@ -23,6 +23,9 @@ spring:
   eureka:
     url: "http://discovery-service:8761/eureka"
 
+cors:
+  origins: ""
+
 autoscaling:
   enabled: true
   minReplicas: 2

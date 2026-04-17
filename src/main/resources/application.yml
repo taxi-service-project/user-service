@@ -20,6 +20,9 @@ spring:
     issuer: dsada
     secret: test-v3ryLo0ngAndS3cretKeyForJwtTokenGenerationMustBeAtLeast256Bits
 
+cors:
+  allowed-origins: "${CORS_ALLOWED_ORIGINS:http://localhost:3000}"
+
 eureka:
   client:
     register-with-eureka: true
